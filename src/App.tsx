@@ -323,7 +323,7 @@ function AppContent() {
         {view === 'manage' && (
           <WordManager
             words={words}
-            onAdd={w => handleAdd(w)}
+            onAdd={handleAdd}
             onUpdate={handleUpdate}
             onDelete={handleDelete}
           />

@@ -4,9 +4,9 @@ import { Plus, Trash2, Edit3, Check, X, Search, BookOpen, Filter } from 'lucide-
 
 interface Props {
   words: Word[];
-  onAdd: (word: Omit<Word, 'id'>) => void;
-  onUpdate: (word: Word) => void;
-  onDelete: (id: string) => void;
+  onAdd: (word: Omit<Word, 'id'>) => Promise<void>;
+  onUpdate: (word: Word) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }
 
 const CATEGORIES: WordCategory[] = ['verb', 'phrasal-verb', 'adjective', 'adverb', 'noun'];
@@ -26,6 +26,8 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
   const [filterCat, setFilterCat] = useState<WordCategory | 'all'>('all');
   const [errors, setErrors] = useState<Partial<Record<keyof Omit<Word, 'id'>, string>>>({});
   const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const validate = () => {
     const e: typeof errors = {};
@@ -34,20 +36,28 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
-
-    if (editId) {
-      onUpdate({ ...form, id: editId });
-      setEditId(null);
-    } else {
-      onAdd(form);
+    setSaveError('');
+    setSaving(true);
+    try {
+      if (editId) {
+        await onUpdate({ ...form, id: editId });
+        setEditId(null);
+      } else {
+        await onAdd(form);
+      }
+      setForm(emptyForm());
+      setShowForm(false);
+    } catch (err) {
+      setSaveError('Failed to save. Check Firestore is set up in Firebase Console.');
+      console.error(err);
+    } finally {
+      setSaving(false);
     }
-    setForm(emptyForm());
-    setShowForm(false);
   };
 
   const startEdit = (w: Word) => {
@@ -173,13 +183,17 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
               />
             </div>
 
+            {saveError && (
+              <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{saveError}</p>
+            )}
             <div className="flex gap-3 pt-2">
               <button
                 type="submit"
-                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors text-sm"
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-colors text-sm disabled:opacity-60"
               >
                 <Check size={15} />
-                {editId ? 'Save Changes' : 'Add Word'}
+                {saving ? 'Saving…' : editId ? 'Save Changes' : 'Add Word'}
               </button>
               <button type="button" onClick={cancelEdit} className="px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm">
                 Cancel

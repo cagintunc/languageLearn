@@ -5,9 +5,6 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
-  query,
-  orderBy,
-  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Word } from '../types';
@@ -15,13 +12,12 @@ import { Word } from '../types';
 const wordsCol = (uid: string) => collection(db, 'users', uid, 'words');
 
 export const fetchWords = async (uid: string): Promise<Word[]> => {
-  const q = query(wordsCol(uid), orderBy('createdAt', 'asc'));
-  const snap = await getDocs(q);
+  const snap = await getDocs(wordsCol(uid));
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as Word));
 };
 
 export const addWord = async (uid: string, word: Omit<Word, 'id'>): Promise<Word> => {
-  const ref = await addDoc(wordsCol(uid), { ...word, createdAt: serverTimestamp() });
+  const ref = await addDoc(wordsCol(uid), word);
   return { ...word, id: ref.id };
 };
 
