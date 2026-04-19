@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Word, WordCategory, CATEGORY_LABELS, CATEGORY_COLORS, GameType } from './types';
-import { loadWords, saveWords } from './data/storage';
+import { fetchWords, addWord, updateWord, deleteWord } from './data/firestore';
+import { useAuth } from './context/AuthContext';
+import LoginScreen from './components/LoginScreen';
 import Flashcard from './components/games/Flashcard';
 import MultipleChoice from './components/games/MultipleChoice';
 import FillBlank from './components/games/FillBlank';
@@ -9,7 +11,7 @@ import Spelling from './components/games/Spelling';
 import WordManager from './components/WordManager';
 import {
   BookOpen, Zap, HelpCircle, Shuffle, PenLine,
-  Layers, ChevronDown
+  Layers, ChevronDown, LogOut, Loader2,
 } from 'lucide-react';
 
 type View = 'home' | 'manage' | 'game';
@@ -25,16 +27,48 @@ const GAMES: { id: GameType; label: string; desc: string; icon: React.ReactNode;
 
 const CATEGORIES: WordCategory[] = ['verb', 'phrasal-verb', 'adjective', 'adverb', 'noun'];
 
-export default function App() {
-  const [words, setWords] = useState<Word[]>(loadWords);
+function AppContent() {
+  const { user, loading: authLoading, logOut } = useAuth();
+  const [words, setWords] = useState<Word[]>([]);
+  const [wordsLoading, setWordsLoading] = useState(false);
   const [view, setView] = useState<View>('home');
   const [activeGame, setActiveGame] = useState<GameType | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [showCatDropdown, setShowCatDropdown] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const persist = (updated: Word[]) => {
-    setWords(updated);
-    saveWords(updated);
+  const loadWords = useCallback(async () => {
+    if (!user) return;
+    setWordsLoading(true);
+    try {
+      const fetched = await fetchWords(user.uid);
+      setWords(fetched);
+    } finally {
+      setWordsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) loadWords();
+    else setWords([]);
+  }, [user, loadWords]);
+
+  const handleAdd = async (word: Omit<Word, 'id'>) => {
+    if (!user) return;
+    const added = await addWord(user.uid, word);
+    setWords(prev => [...prev, added]);
+  };
+
+  const handleUpdate = async (word: Word) => {
+    if (!user) return;
+    await updateWord(user.uid, word);
+    setWords(prev => prev.map(w => w.id === word.id ? word : w));
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!user) return;
+    await deleteWord(user.uid, id);
+    setWords(prev => prev.filter(w => w.id !== id));
   };
 
   const filteredWords = useMemo(() =>
@@ -59,6 +93,16 @@ export default function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-indigo-400" />
+      </div>
+    );
+  }
+
+  if (!user) return <LoginScreen />;
+
   const game = GAMES.find(g => g.id === activeGame);
 
   return (
@@ -73,6 +117,7 @@ export default function App() {
             <BookOpen size={22} />
             LinguaPlay
           </button>
+
           <nav className="flex items-center gap-1">
             <button
               onClick={() => setView('home')}
@@ -86,97 +131,137 @@ export default function App() {
             >
               My Words
             </button>
+
+            {/* User avatar */}
+            <div className="relative ml-2">
+              <button
+                onClick={() => setShowUserMenu(m => !m)}
+                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt={user.displayName ?? ''} className="w-8 h-8 rounded-full" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                    {user.displayName?.[0] ?? user.email?.[0] ?? '?'}
+                  </div>
+                )}
+                <span className="text-sm text-gray-700 font-medium hidden sm:block">
+                  {user.displayName?.split(' ')[0] ?? 'Me'}
+                </span>
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-10">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{user.displayName}</p>
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { logOut(); setShowUserMenu(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={14} /> Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </nav>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
 
-        {/* HOME - Game picker */}
+        {/* HOME */}
         {view === 'home' && (
           <div>
             <div className="text-center mb-10">
               <h1 className="text-4xl font-extrabold text-gray-900 mb-3">
-                Learn Words Through Play
+                Welcome back, {user.displayName?.split(' ')[0] ?? 'there'}!
               </h1>
               <p className="text-gray-500 max-w-xl mx-auto">
                 Add your own vocabulary, then practice with 5 interactive games. Filter by word type to focus your study.
               </p>
             </div>
 
-            {/* Stats bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
-              {CATEGORIES.map(cat => {
-                const count = words.filter(w => w.category === cat).length;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(f => f === cat ? 'all' : cat)}
-                    className={`rounded-xl p-3 text-center border-2 transition-all ${
-                      categoryFilter === cat
-                        ? CATEGORY_COLORS[cat] + ' border-current shadow-sm'
-                        : 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
-                    }`}
-                  >
-                    <p className="text-2xl font-bold">{count}</p>
-                    <p className="text-xs mt-0.5 font-medium">{CATEGORY_LABELS[cat]}</p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Category filter */}
-            {categoryFilter !== 'all' && (
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-sm text-gray-500">Studying:</span>
-                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${CATEGORY_COLORS[categoryFilter]}`}>
-                  {CATEGORY_LABELS[categoryFilter]}s
-                </span>
-                <button onClick={() => setCategoryFilter('all')} className="text-xs text-gray-400 hover:text-gray-600 underline">
-                  Clear filter
-                </button>
+            {wordsLoading ? (
+              <div className="flex justify-center py-20">
+                <Loader2 size={28} className="animate-spin text-indigo-400" />
               </div>
-            )}
-
-            {/* Game cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {GAMES.map(g => {
-                const available = filteredWords.length >= g.min;
-                return (
-                  <button
-                    key={g.id}
-                    onClick={() => available && startGame(g.id)}
-                    disabled={!available}
-                    className={`text-left p-6 rounded-2xl border-2 transition-all group ${
-                      available
-                        ? 'bg-white border-gray-100 hover:border-indigo-300 hover:shadow-lg cursor-pointer'
-                        : 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4 group-hover:bg-indigo-100 transition-colors`}>
-                      {g.icon}
-                    </div>
-                    <h3 className="font-bold text-gray-800 mb-1">{g.label}</h3>
-                    <p className="text-sm text-gray-500">{g.desc}</p>
-                    {!available && (
-                      <p className="text-xs text-amber-600 mt-2">Need at least {g.min} word{g.min > 1 ? 's' : ''}</p>
-                    )}
-                  </button>
-                );
-              })}
-
-              {/* Add words CTA */}
-              <button
-                onClick={() => setView('manage')}
-                className="text-left p-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 hover:border-indigo-300 transition-all cursor-pointer"
-              >
-                <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 mb-4">
-                  <BookOpen size={22} />
+            ) : (
+              <>
+                {/* Stats bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-8">
+                  {CATEGORIES.map(cat => {
+                    const count = words.filter(w => w.category === cat).length;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setCategoryFilter(f => f === cat ? 'all' : cat)}
+                        className={`rounded-xl p-3 text-center border-2 transition-all ${
+                          categoryFilter === cat
+                            ? CATEGORY_COLORS[cat] + ' border-current shadow-sm'
+                            : 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
+                        }`}
+                      >
+                        <p className="text-2xl font-bold">{count}</p>
+                        <p className="text-xs mt-0.5 font-medium">{CATEGORY_LABELS[cat]}</p>
+                      </button>
+                    );
+                  })}
                 </div>
-                <h3 className="font-bold text-indigo-700 mb-1">Add More Words</h3>
-                <p className="text-sm text-indigo-500">Grow your vocabulary to unlock more game variety</p>
-              </button>
-            </div>
+
+                {categoryFilter !== 'all' && (
+                  <div className="flex items-center gap-2 mb-6">
+                    <span className="text-sm text-gray-500">Studying:</span>
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${CATEGORY_COLORS[categoryFilter]}`}>
+                      {CATEGORY_LABELS[categoryFilter]}s
+                    </span>
+                    <button onClick={() => setCategoryFilter('all')} className="text-xs text-gray-400 hover:text-gray-600 underline">
+                      Clear filter
+                    </button>
+                  </div>
+                )}
+
+                {/* Game cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {GAMES.map(g => {
+                    const available = filteredWords.length >= g.min;
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => available && startGame(g.id)}
+                        disabled={!available}
+                        className={`text-left p-6 rounded-2xl border-2 transition-all group ${
+                          available
+                            ? 'bg-white border-gray-100 hover:border-indigo-300 hover:shadow-lg cursor-pointer'
+                            : 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
+                        }`}
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 mb-4 group-hover:bg-indigo-100 transition-colors">
+                          {g.icon}
+                        </div>
+                        <h3 className="font-bold text-gray-800 mb-1">{g.label}</h3>
+                        <p className="text-sm text-gray-500">{g.desc}</p>
+                        {!available && (
+                          <p className="text-xs text-amber-600 mt-2">Need at least {g.min} word{g.min > 1 ? 's' : ''}</p>
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => setView('manage')}
+                    className="text-left p-6 rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 hover:border-indigo-300 transition-all cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 mb-4">
+                      <BookOpen size={22} />
+                    </div>
+                    <h3 className="font-bold text-indigo-700 mb-1">Add More Words</h3>
+                    <p className="text-sm text-indigo-500">Grow your vocabulary to unlock more games</p>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -200,7 +285,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Category filter in game */}
               <div className="ml-auto relative">
                 <button
                   onClick={() => setShowCatDropdown(d => !d)}
@@ -239,12 +323,16 @@ export default function App() {
         {view === 'manage' && (
           <WordManager
             words={words}
-            onAdd={w => persist([...words, w])}
-            onUpdate={w => persist(words.map(x => x.id === w.id ? w : x))}
-            onDelete={id => persist(words.filter(w => w.id !== id))}
+            onAdd={w => handleAdd(w)}
+            onUpdate={handleUpdate}
+            onDelete={handleDelete}
           />
         )}
       </main>
     </div>
   );
+}
+
+export default function App() {
+  return <AppContent />;
 }

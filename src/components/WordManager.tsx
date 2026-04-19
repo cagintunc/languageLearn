@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { Word, WordCategory, CATEGORY_LABELS, CATEGORY_COLORS } from '../types';
 import { Plus, Trash2, Edit3, Check, X, Search, BookOpen, Filter } from 'lucide-react';
 
 interface Props {
   words: Word[];
-  onAdd: (word: Word) => void;
+  onAdd: (word: Omit<Word, 'id'>) => void;
   onUpdate: (word: Word) => void;
   onDelete: (id: string) => void;
 }
@@ -45,7 +44,7 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
       onUpdate({ ...form, id: editId });
       setEditId(null);
     } else {
-      onAdd({ ...form, id: uuidv4() });
+      onAdd(form);
     }
     setForm(emptyForm());
     setShowForm(false);
