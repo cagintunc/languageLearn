@@ -17,6 +17,7 @@ const emptyForm = (): Omit<Word, 'id'> => ({
   definition: '',
   example: '',
   translation: '',
+  pronunciation: '',
 });
 
 export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props) {
@@ -61,7 +62,7 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
   };
 
   const startEdit = (w: Word) => {
-    setForm({ word: w.word, category: w.category, definition: w.definition, example: w.example, translation: w.translation ?? '' });
+    setForm({ word: w.word, category: w.category, definition: w.definition, example: w.example, translation: w.translation ?? '', pronunciation: w.pronunciation ?? '' });
     setEditId(w.id);
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -183,6 +184,19 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pronunciation <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={form.pronunciation}
+                onChange={e => setForm(f => ({ ...f, pronunciation: e.target.value }))}
+                placeholder="e.g. /ˌpɜːsɪˈvɪərəns/ or per-suh-VEER-uhns"
+                className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-indigo-400 outline-none transition-colors text-sm"
+              />
+            </div>
+
             {saveError && (
               <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{saveError}</p>
             )}
@@ -249,6 +263,7 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="font-bold text-gray-800">{w.word}</p>
+                        {w.pronunciation && <p className="text-xs text-indigo-400 font-mono">{w.pronunciation}</p>}
                         {w.translation && <p className="text-xs text-gray-400">{w.translation}</p>}
                       </div>
                       <div className="flex gap-1 shrink-0">

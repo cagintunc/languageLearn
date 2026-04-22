@@ -7,6 +7,7 @@ export interface Word {
   definition: string;
   example: string;
   translation?: string;
+  pronunciation?: string;
 }
 
 export type GameType = 'flashcard' | 'multiple-choice' | 'fill-blank' | 'word-match' | 'spelling';
