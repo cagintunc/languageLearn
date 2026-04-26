@@ -345,8 +345,14 @@ export default function WordBreaker({ words }: Props) {
     setDef(correct.definition);
     setCat(correct.category);
     setPhase('playing');
-    startLoop();
-  }, [words, stopLoop, startLoop]);
+    // startLoop() is triggered by the useEffect below once the canvas is in the DOM
+  }, [words, stopLoop]);
+
+  // Start loop after React mounts the canvas (phase flip → re-render → effect)
+  useEffect(() => {
+    if (phase === 'playing') startLoop();
+    return () => stopLoop();
+  }, [phase, startLoop, stopLoop]);
 
   // Handle canvas mouse events
   const getCanvasX = (e: React.MouseEvent | React.TouchEvent) => {
@@ -359,8 +365,6 @@ export default function WordBreaker({ words }: Props) {
 
   const onMouseMove = (e: React.MouseEvent) => { mouseXRef.current = getCanvasX(e); };
   const onTouchMove = (e: React.TouchEvent) => { e.preventDefault(); mouseXRef.current = getCanvasX(e); };
-
-  useEffect(() => () => stopLoop(), [stopLoop]);
 
   if (words.length < 4) {
     return <div className="text-center py-20 text-gray-400"><p className="text-lg">Add at least 4 words to play Word Breaker!</p></div>;
