@@ -16,7 +16,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function Flashcard({ words }: Props) {
-  const [deck, setDeck] = useState(() => shuffle(words));
+  const [deck, setDeck] = useState(() => shuffle(words).slice(0, 30));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [known, setKnown] = useState<Set<string>>(new Set());
@@ -34,7 +34,7 @@ export default function Flashcard({ words }: Props) {
   }, []);
 
   const reshuffle = () => {
-    setDeck(shuffle(words));
+    setDeck(shuffle(words).slice(0, 30));
     setIndex(0);
     setFlipped(false);
     setKnown(new Set());

@@ -50,7 +50,7 @@ export default function WordMatch({ words }: Props) {
   }, []);
 
   const init = useCallback(() => {
-    const q = shuffle(words);
+    const q = shuffle(words).slice(0, 30);
     setQueue(q);
     setBatchIndex(0);
     setScore({ correct: 0, total: 0 });

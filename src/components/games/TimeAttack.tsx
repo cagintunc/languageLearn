@@ -35,15 +35,17 @@ export default function TimeAttack({ words }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [flash, setFlash] = useState<'correct' | 'wrong' | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const poolRef = useRef<Word[]>([]);
 
   const loadNext = useCallback(() => {
-    const q = pickQuestion(words);
+    const q = pickQuestion(poolRef.current);
     setCurrent(q.current);
     setOptions(q.options);
     setSelected(null);
-  }, [words]);
+  }, []);
 
   const start = useCallback(() => {
+    poolRef.current = shuffle(words).slice(0, 30);
     setPhase('playing');
     setTimeLeft(GAME_DURATION);
     setScore(0);
@@ -51,7 +53,7 @@ export default function TimeAttack({ words }: Props) {
     setTotal(0);
     setCorrect(0);
     loadNext();
-  }, [loadNext]);
+  }, [words, loadNext]);
 
   useEffect(() => {
     if (phase !== 'playing') return;

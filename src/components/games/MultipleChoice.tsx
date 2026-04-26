@@ -31,7 +31,7 @@ export default function MultipleChoice({ words }: Props) {
   const [shake, setShake] = useState<string | null>(null);
 
   const init = useCallback(() => {
-    const q = shuffle(words);
+    const q = shuffle(words).slice(0, 30);
     setQueue(q);
     setQIndex(0);
     setSelected(null);

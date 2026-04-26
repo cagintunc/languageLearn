@@ -34,7 +34,7 @@ export default function FillBlank({ words }: Props) {
   const wordsWithExamples = words.filter(w => w.example && w.example.includes(w.word));
 
   const init = useCallback(() => {
-    const q = shuffle(wordsWithExamples);
+    const q = shuffle(wordsWithExamples).slice(0, 30);
     setQueue(q);
     setQIndex(0);
     setInput('');

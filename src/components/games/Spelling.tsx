@@ -39,7 +39,7 @@ export default function Spelling({ words }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const init = useCallback(() => {
-    const q = shuffle(words);
+    const q = shuffle(words).slice(0, 30);
     setQueue(q);
     setQIndex(0);
     setInput('');
