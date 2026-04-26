@@ -15,13 +15,12 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function getOptions(correct: Word, allWords: Word[]): Word[] {
-  const pool = allWords.filter(w => w.id !== correct.id);
-  const distractors = shuffle(pool).slice(0, 3);
-  return shuffle([correct, ...distractors]);
+function getDefOptions(correct: Word, allWords: Word[]): Word[] {
+  const pool = shuffle(allWords.filter(w => w.id !== correct.id)).slice(0, 3);
+  return shuffle([correct, ...pool]);
 }
 
-export default function MultipleChoice({ words }: Props) {
+export default function ReverseChoice({ words }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -37,8 +36,8 @@ export default function MultipleChoice({ words }: Props) {
     setSelected(null);
     setScore({ correct: 0, total: 0 });
     setFinished(false);
-    if (q.length > 0 && words.length >= 2) {
-      setOptions(getOptions(q[0], words));
+    if (q.length > 0 && words.length >= 4) {
+      setOptions(getDefOptions(q[0], words));
     }
   }, [words]);
 
@@ -46,14 +45,14 @@ export default function MultipleChoice({ words }: Props) {
 
   useEffect(() => {
     if (queue.length > 0 && qIndex < queue.length) {
-      setOptions(getOptions(queue[qIndex], words));
+      setOptions(getDefOptions(queue[qIndex], words));
     }
   }, [qIndex, queue, words]);
 
-  if (words.length < 2) {
+  if (words.length < 4) {
     return (
       <div className="text-center py-20 text-gray-400">
-        <p className="text-lg">Add at least 2 words to play Multiple Choice!</p>
+        <p className="text-lg">Add at least 4 words to play Word to Definition!</p>
       </div>
     );
   }
@@ -82,7 +81,7 @@ export default function MultipleChoice({ words }: Props) {
         </div>
         <button
           onClick={init}
-          className="px-8 py-3 bg-indigo-600 text-white rounded-full font-semibold hover:bg-indigo-700 transition-colors shadow-lg"
+          className="px-8 py-3 bg-teal-600 text-white rounded-full font-semibold hover:bg-teal-700 transition-colors shadow-lg"
         >
           Play Again
         </button>
@@ -96,12 +95,12 @@ export default function MultipleChoice({ words }: Props) {
   const handleSelect = (opt: Word) => {
     if (selected !== null) return;
     setSelected(opt.id);
-    const correct = opt.id === current.id;
-    if (!correct) {
+    const isCorrect = opt.id === current.id;
+    if (!isCorrect) {
       setShake(opt.id);
       setTimeout(() => setShake(null), 500);
     }
-    setScore(s => ({ correct: s.correct + (correct ? 1 : 0), total: s.total + 1 }));
+    setScore(s => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
     setTimeout(() => {
       if (qIndex + 1 >= queue.length) {
         setFinished(true);
@@ -109,7 +108,7 @@ export default function MultipleChoice({ words }: Props) {
         setQIndex(i => i + 1);
         setSelected(null);
       }
-    }, 1200);
+    }, 1400);
   };
 
   return (
@@ -126,47 +125,58 @@ export default function MultipleChoice({ words }: Props) {
 
       <div className="w-full bg-gray-200 rounded-full h-1.5 mb-8">
         <div
-          className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
-          style={{ width: `${((qIndex) / queue.length) * 100}%` }}
+          className="bg-teal-500 h-1.5 rounded-full transition-all duration-300"
+          style={{ width: `${(qIndex / queue.length) * 100}%` }}
         />
       </div>
 
-      {/* Question */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-6 text-center">
         <div className="mb-3">
           <span className={`text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full border ${CATEGORY_COLORS[current.category]}`}>
             {CATEGORY_LABELS[current.category]}
           </span>
         </div>
-        <p className="text-gray-500 text-sm mb-2">Which word matches this definition?</p>
-        <p className="text-xl font-semibold text-gray-800">{current.definition}</p>
+        <p className="text-gray-500 text-sm mb-3">Which definition matches this word?</p>
+        <p className="text-4xl font-extrabold text-gray-900 tracking-tight">{current.word}</p>
+        {current.pronunciation && (
+          <p className="mt-2 text-sm text-gray-400 italic">{current.pronunciation}</p>
+        )}
       </div>
 
-      {/* Options */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {options.map(opt => {
+      <div className="flex flex-col gap-3">
+        {options.map((opt, i) => {
           const isSelected = selected === opt.id;
           const isCorrect = opt.id === current.id;
-          let cls = 'p-4 rounded-xl border-2 font-semibold text-lg text-center cursor-pointer transition-all duration-200 ';
+          let cls = 'p-4 rounded-xl border-2 text-left transition-all duration-200 ';
           if (selected === null) {
-            cls += 'bg-white border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 hover:shadow-sm';
+            cls += 'bg-white border-gray-200 hover:border-teal-400 hover:bg-teal-50 hover:shadow-sm cursor-pointer';
           } else if (isCorrect) {
-            cls += 'bg-green-50 border-green-400 text-green-700';
+            cls += 'bg-green-50 border-green-400 text-green-800';
           } else if (isSelected && !isCorrect) {
-            cls += 'bg-red-50 border-red-400 text-red-700';
+            cls += 'bg-red-50 border-red-400 text-red-800';
           } else {
             cls += 'bg-white border-gray-200 opacity-50 cursor-default';
           }
+
+          const labels = ['A', 'B', 'C', 'D'];
 
           return (
             <button
               key={opt.id}
               onClick={() => handleSelect(opt)}
-              className={`${cls} ${shake === opt.id ? 'shake' : ''}`}
+              className={`${cls} ${shake === opt.id ? 'shake' : ''} flex items-start gap-3`}
             >
-              {opt.word}
-              {selected !== null && isCorrect && <CheckCircle size={16} className="inline ml-2 text-green-500" />}
-              {selected !== null && isSelected && !isCorrect && <XCircle size={16} className="inline ml-2 text-red-500" />}
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center mt-0.5 ${
+                selected === null ? 'bg-gray-100 text-gray-500' :
+                isCorrect ? 'bg-green-200 text-green-700' :
+                isSelected ? 'bg-red-200 text-red-700' :
+                'bg-gray-100 text-gray-400'
+              }`}>
+                {labels[i]}
+              </span>
+              <span className="text-sm leading-relaxed">{opt.definition}</span>
+              {selected !== null && isCorrect && <CheckCircle size={16} className="flex-shrink-0 ml-auto mt-0.5 text-green-500" />}
+              {selected !== null && isSelected && !isCorrect && <XCircle size={16} className="flex-shrink-0 ml-auto mt-0.5 text-red-500" />}
             </button>
           );
         })}

@@ -8,10 +8,12 @@ import MultipleChoice from './components/games/MultipleChoice';
 import FillBlank from './components/games/FillBlank';
 import WordMatch from './components/games/WordMatch';
 import Spelling from './components/games/Spelling';
+import TimeAttack from './components/games/TimeAttack';
+import ReverseChoice from './components/games/ReverseChoice';
 import WordManager from './components/WordManager';
 import {
   BookOpen, Zap, HelpCircle, Shuffle, PenLine,
-  Layers, ChevronDown, LogOut, Loader2,
+  Layers, ChevronDown, LogOut, Loader2, Timer, BookMarked,
 } from 'lucide-react';
 
 type View = 'home' | 'manage' | 'game';
@@ -19,10 +21,12 @@ type CategoryFilter = WordCategory | 'all';
 
 const GAMES: { id: GameType; label: string; desc: string; icon: React.ReactNode; min: number }[] = [
   { id: 'flashcard', label: 'Flashcard', desc: 'Flip cards to reveal definitions and mark what you know', icon: <Layers size={22} />, min: 1 },
-  { id: 'multiple-choice', label: 'Multiple Choice', desc: 'Pick the correct definition from 4 options', icon: <HelpCircle size={22} />, min: 4 },
+  { id: 'multiple-choice', label: 'Multiple Choice', desc: 'See a definition — pick the matching word from 4 options', icon: <HelpCircle size={22} />, min: 4 },
+  { id: 'reverse-choice', label: 'Word to Definition', desc: 'See a word — pick the correct definition from 4 options', icon: <BookMarked size={22} />, min: 4 },
   { id: 'fill-blank', label: 'Fill in the Blank', desc: 'Complete sentences by typing the missing word', icon: <PenLine size={22} />, min: 1 },
   { id: 'word-match', label: 'Word Match', desc: 'Match words to their definitions by clicking pairs', icon: <Shuffle size={22} />, min: 2 },
   { id: 'spelling', label: 'Unscramble', desc: 'Rearrange scrambled letters to spell the correct word', icon: <Zap size={22} />, min: 1 },
+  { id: 'time-attack', label: 'Time Attack', desc: 'Answer as many as possible in 60 seconds — build streaks for bonus points', icon: <Timer size={22} />, min: 4 },
 ];
 
 const CATEGORIES: WordCategory[] = ['verb', 'phrasal-verb', 'adjective', 'adverb', 'noun'];
@@ -86,9 +90,11 @@ function AppContent() {
     switch (activeGame) {
       case 'flashcard': return <Flashcard {...props} />;
       case 'multiple-choice': return <MultipleChoice {...props} />;
+      case 'reverse-choice': return <ReverseChoice {...props} />;
       case 'fill-blank': return <FillBlank {...props} />;
       case 'word-match': return <WordMatch {...props} />;
       case 'spelling': return <Spelling {...props} />;
+      case 'time-attack': return <TimeAttack {...props} />;
       default: return null;
     }
   };
@@ -179,7 +185,7 @@ function AppContent() {
                 Welcome back, {user.displayName?.split(' ')[0] ?? 'there'}!
               </h1>
               <p className="text-gray-500 max-w-xl mx-auto">
-                Add your own vocabulary, then practice with 5 interactive games. Filter by word type to focus your study.
+                Add your own vocabulary, then practice with 7 interactive games. Filter by word type to focus your study.
               </p>
             </div>
 
