@@ -10,10 +10,12 @@ import WordMatch from './components/games/WordMatch';
 import Spelling from './components/games/Spelling';
 import TimeAttack from './components/games/TimeAttack';
 import ReverseChoice from './components/games/ReverseChoice';
+import WordRain from './components/games/WordRain';
+import WordBreaker from './components/games/WordBreaker';
 import WordManager from './components/WordManager';
 import {
   BookOpen, Zap, HelpCircle, Shuffle, PenLine,
-  Layers, ChevronDown, LogOut, Loader2, Timer, BookMarked,
+  Layers, ChevronDown, LogOut, Loader2, Timer, BookMarked, CloudRain, Boxes,
 } from 'lucide-react';
 
 type View = 'home' | 'manage' | 'game';
@@ -26,7 +28,9 @@ const GAMES: { id: GameType; label: string; desc: string; icon: React.ReactNode;
   { id: 'fill-blank', label: 'Fill in the Blank', desc: 'Complete sentences by typing the missing word', icon: <PenLine size={22} />, min: 1 },
   { id: 'word-match', label: 'Word Match', desc: 'Match words to their definitions by clicking pairs', icon: <Shuffle size={22} />, min: 2 },
   { id: 'spelling', label: 'Unscramble', desc: 'Rearrange scrambled letters to spell the correct word', icon: <Zap size={22} />, min: 1 },
-  { id: 'time-attack', label: 'Time Attack', desc: 'Answer as many as possible in 60 seconds — build streaks for bonus points', icon: <Timer size={22} />, min: 4 },
+  { id: 'time-attack',   label: 'Time Attack',   desc: 'Answer as many as possible in 60 seconds — build streaks for bonus points', icon: <Timer size={22} />,     min: 4 },
+  { id: 'word-rain',    label: 'Word Rain',     desc: 'Words fall from the sky — click the right one before it hits the ground!',  icon: <CloudRain size={22} />, min: 4 },
+  { id: 'word-breaker', label: 'Word Breaker',  desc: 'Break the gold brick with your ball — it\'s the word that matches the definition', icon: <Boxes size={22} />, min: 4 },
 ];
 
 const CATEGORIES: WordCategory[] = ['verb', 'phrasal-verb', 'adjective', 'adverb', 'noun'];
@@ -94,7 +98,9 @@ function AppContent() {
       case 'fill-blank': return <FillBlank {...props} />;
       case 'word-match': return <WordMatch {...props} />;
       case 'spelling': return <Spelling {...props} />;
-      case 'time-attack': return <TimeAttack {...props} />;
+      case 'time-attack':   return <TimeAttack {...props} />;
+      case 'word-rain':     return <WordRain {...props} />;
+      case 'word-breaker':  return <WordBreaker {...props} />;
       default: return null;
     }
   };
@@ -185,7 +191,7 @@ function AppContent() {
                 Welcome back, {user.displayName?.split(' ')[0] ?? 'there'}!
               </h1>
               <p className="text-gray-500 max-w-xl mx-auto">
-                Add your own vocabulary, then practice with 7 interactive games. Filter by word type to focus your study.
+                Add your own vocabulary, then practice with 9 interactive games. Filter by word type to focus your study.
               </p>
             </div>
 

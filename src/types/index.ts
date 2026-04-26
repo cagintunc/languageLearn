@@ -10,7 +10,7 @@ export interface Word {
   pronunciation?: string;
 }
 
-export type GameType = 'flashcard' | 'multiple-choice' | 'fill-blank' | 'word-match' | 'spelling' | 'time-attack' | 'reverse-choice';
+export type GameType = 'flashcard' | 'multiple-choice' | 'fill-blank' | 'word-match' | 'spelling' | 'time-attack' | 'reverse-choice' | 'word-rain' | 'word-breaker';
 
 export interface GameScore {
   correct: number;
