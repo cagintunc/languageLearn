@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Word, CATEGORY_LABELS, CATEGORY_COLORS } from '../../types';
+import { Word, CATEGORY_LABELS } from '../../types';
 import { Heart, Trophy } from 'lucide-react';
 
 // ─── Canvas constants ─────────────────────────────────────────────────────────
-const W = 600, H = 440;
+const W = 600;
+const H_GAME = 420;   // game area (ball lives here)
+const H_DEF  = 100;   // definition strip below the game area
+const H = H_GAME + H_DEF;
 const BALL_R = 9;
 const BALL_SPEED = 5;
-const PADDLE_W = 110, PADDLE_H = 12, PADDLE_Y = H - 36;
+const PADDLE_W = 110, PADDLE_H = 12, PADDLE_Y = H_GAME - 36;
 const BRICK_W = 128, BRICK_H = 44, BRICK_GAP = 10;
 const BRICK_Y = 55;
-const NUM_BRICKS = 4; // 1 correct + 3 wrong
+const NUM_BRICKS = 4;
 const BRICK_START_X = (W - (NUM_BRICKS * BRICK_W + (NUM_BRICKS - 1) * BRICK_GAP)) / 2;
 
 function shuffle<T>(arr: T[]): T[] {
@@ -21,8 +24,8 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-interface Brick { x: number; y: number; word: Word; isCorrect: boolean; alive: boolean }
-interface Ball  { x: number; y: number; vx: number; vy: number }
+interface Brick  { x: number; y: number; word: Word; isCorrect: boolean; alive: boolean }
+interface Ball   { x: number; y: number; vx: number; vy: number }
 interface Paddle { x: number }
 
 interface GameState {
@@ -32,7 +35,9 @@ interface GameState {
   lives: number;
   score: number;
   phase: 'playing' | 'done';
-  launched: boolean; // ball stuck to paddle until first click
+  launched: boolean;
+  definition: string;
+  category: Word['category'];
 }
 
 function makeBricks(correct: Word, all: Word[]): Brick[] {
@@ -51,73 +56,76 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.arcTo(x + w, y,     x + w, y + r,     r);
   ctx.lineTo(x + w, y + h - r);
   ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
   ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
+  ctx.arcTo(x,     y + h, x,     y + h - r, r);
+  ctx.lineTo(x,     y + r);
+  ctx.arcTo(x,     y,     x + r, y,         r);
   ctx.closePath();
 }
 
+function wrapText(ctx: CanvasRenderingContext2D, text: string, cx: number, y: number, maxW: number, lineH: number) {
+  const words = text.split(' ');
+  let line = '';
+  let currY = y;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, cx, currY);
+      line = word;
+      currY += lineH;
+    } else {
+      line = test;
+    }
+  }
+  ctx.fillText(line, cx, currY);
+}
+
 function draw(ctx: CanvasRenderingContext2D, gs: GameState, t: number) {
-  // Background
+  // ── Background ──────────────────────────────────────────────────────────────
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle grid lines
+  // Subtle grid
   ctx.strokeStyle = 'rgba(255,255,255,0.03)';
   ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H_GAME); ctx.stroke(); }
+  for (let y = 0; y < H_GAME; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-  // Bricks
+  // ── Bricks (all look the same) ───────────────────────────────────────────────
   for (const b of gs.bricks) {
     if (!b.alive) continue;
     ctx.save();
-    if (b.isCorrect) {
-      const pulse = 0.6 + 0.4 * Math.sin(t * 0.004);
-      ctx.shadowColor = '#f59e0b';
-      ctx.shadowBlur = 20 * pulse;
-      const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + BRICK_H);
-      grad.addColorStop(0, '#fcd34d');
-      grad.addColorStop(1, '#f59e0b');
-      ctx.fillStyle = grad;
-    } else {
-      ctx.shadowBlur = 0;
-      const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + BRICK_H);
-      grad.addColorStop(0, '#334155');
-      grad.addColorStop(1, '#1e293b');
-      ctx.fillStyle = grad;
-    }
+    ctx.shadowBlur = 0;
+    const grad = ctx.createLinearGradient(b.x, b.y, b.x, b.y + BRICK_H);
+    grad.addColorStop(0, '#3b4f6e');
+    grad.addColorStop(1, '#1e2d45');
+    ctx.fillStyle = grad;
     roundRect(ctx, b.x, b.y, BRICK_W, BRICK_H, 8);
     ctx.fill();
-
-    // Border
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = b.isCorrect ? 'rgba(251,191,36,0.8)' : 'rgba(100,116,139,0.5)';
-    ctx.lineWidth = b.isCorrect ? 2 : 1;
+    ctx.strokeStyle = 'rgba(100,140,210,0.35)';
+    ctx.lineWidth = 1;
     ctx.stroke();
-
-    // Word label
-    ctx.fillStyle = b.isCorrect ? '#1c1917' : '#94a3b8';
+    ctx.fillStyle = '#cbd5e1';
     ctx.font = `bold ${b.word.word.length > 12 ? 12 : 14}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const maxW = BRICK_W - 16;
-    ctx.fillText(b.word.word, b.x + BRICK_W / 2, b.y + BRICK_H / 2, maxW);
+    ctx.fillText(b.word.word, b.x + BRICK_W / 2, b.y + BRICK_H / 2, BRICK_W - 16);
     ctx.restore();
   }
 
-  // Danger zone line
-  ctx.strokeStyle = 'rgba(239,68,68,0.3)';
+  // ── Danger line ──────────────────────────────────────────────────────────────
+  ctx.strokeStyle = 'rgba(239,68,68,0.25)';
   ctx.lineWidth = 1;
   ctx.setLineDash([6, 4]);
-  ctx.beginPath(); ctx.moveTo(0, H - 10); ctx.lineTo(W, H - 10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, H_GAME - 8); ctx.lineTo(W, H_GAME - 8); ctx.stroke();
   ctx.setLineDash([]);
 
-  // Paddle
+  // ── Paddle ───────────────────────────────────────────────────────────────────
   const px = gs.paddle.x - PADDLE_W / 2;
   const paddleGrad = ctx.createLinearGradient(px, PADDLE_Y, px, PADDLE_Y + PADDLE_H);
   paddleGrad.addColorStop(0, '#818cf8');
@@ -130,7 +138,7 @@ function draw(ctx: CanvasRenderingContext2D, gs: GameState, t: number) {
   ctx.fill();
   ctx.restore();
 
-  // Ball
+  // ── Ball ─────────────────────────────────────────────────────────────────────
   ctx.save();
   ctx.shadowColor = 'rgba(255,255,255,0.9)';
   ctx.shadowBlur = 14;
@@ -140,14 +148,43 @@ function draw(ctx: CanvasRenderingContext2D, gs: GameState, t: number) {
   ctx.fill();
   ctx.restore();
 
-  // "Tap to launch" hint
+  // Launch hint
   if (!gs.launched) {
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = '13px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Click / tap canvas to launch', W / 2, H / 2 + 40);
+    ctx.fillText('Click or tap to launch', W / 2, H_GAME / 2 + 50);
   }
+
+  // ── Definition strip ─────────────────────────────────────────────────────────
+  // Separator
+  ctx.strokeStyle = 'rgba(99,102,241,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, H_GAME); ctx.lineTo(W, H_GAME); ctx.stroke();
+
+  const stripMid = H_GAME + H_DEF / 2;
+
+  // Category label
+  ctx.fillStyle = '#6366f1';
+  ctx.font = 'bold 10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(CATEGORY_LABELS[gs.category].toUpperCase(), W / 2, H_GAME + 10);
+
+  // Prompt
+  ctx.fillStyle = '#64748b';
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Break the brick that means:', W / 2, H_GAME + 24);
+
+  // Definition text (word-wrapped)
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = 'bold 15px system-ui, sans-serif';
+  wrapText(ctx, gs.definition, W / 2, H_GAME + 42, W - 60, 20);
+
+  void stripMid; // suppress unused warning
 }
 
 function ballBrickCollision(ball: Ball, brick: Brick): boolean {
@@ -158,32 +195,32 @@ function ballBrickCollision(ball: Ball, brick: Brick): boolean {
 }
 
 function resolveCollision(ball: Ball, brick: Brick) {
-  const ol = (ball.x + BALL_R) - brick.x;
+  const ol  = (ball.x + BALL_R) - brick.x;
   const or_ = (brick.x + BRICK_W) - (ball.x - BALL_R);
-  const ot = (ball.y + BALL_R) - brick.y;
-  const ob = (brick.y + BRICK_H) - (ball.y - BALL_R);
+  const ot  = (ball.y + BALL_R) - brick.y;
+  const ob  = (brick.y + BRICK_H) - (ball.y - BALL_R);
   const min = Math.min(ol, or_, ot, ob);
-  if (min === ot)       { ball.vy = -Math.abs(ball.vy); ball.y = brick.y - BALL_R; }
+  if      (min === ot)  { ball.vy = -Math.abs(ball.vy); ball.y = brick.y - BALL_R; }
   else if (min === ob)  { ball.vy =  Math.abs(ball.vy); ball.y = brick.y + BRICK_H + BALL_R; }
   else if (min === ol)  { ball.vx = -Math.abs(ball.vx); ball.x = brick.x - BALL_R; }
   else                  { ball.vx =  Math.abs(ball.vx); ball.x = brick.x + BRICK_W + BALL_R; }
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 interface Props { words: Word[] }
 
 export default function WordBreaker({ words }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafRef    = useRef(0);
-  const gsRef     = useRef<GameState | null>(null);
-  const mouseXRef = useRef(W / 2);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const rafRef     = useRef(0);
+  const gsRef      = useRef<GameState | null>(null);
+  const mouseXRef  = useRef(W / 2);
 
-  const [phase,     setPhase]     = useState<'idle' | 'playing' | 'done'>('idle');
-  const [lives,     setLives]     = useState(3);
-  const [score,     setScore]     = useState(0);
-  const [qIndex,    setQIndex]    = useState(0);
-  const [definition, setDef]      = useState('');
-  const [category,  setCat]       = useState<Word['category']>('noun');
-  const [flash,     setFlash]     = useState<'green' | 'red' | null>(null);
+  const [phase,  setPhase]  = useState<'idle' | 'playing' | 'done'>('idle');
+  const [lives,  setLives]  = useState(3);
+  const [score,  setScore]  = useState(0);
+  const [qIndex, setQIndex] = useState(0);
+  const [flash,  setFlash]  = useState<'green' | 'red' | null>(null);
 
   const queueRef        = useRef<Word[]>([]);
   const qIndexRef       = useRef(0);
@@ -195,18 +232,18 @@ export default function WordBreaker({ words }: Props) {
     setTimeout(() => setFlash(null), 350);
   }
 
-  function loadQuestion(qi: number) {
-    const correct = queueRef.current[qi];
-    gsRef.current!.bricks = makeBricks(correct, words);
-    resetBall(gsRef.current!);
-    setDef(correct.definition);
-    setCat(correct.category);
-    setQIndex(qi);
-  }
-
   function resetBall(gs: GameState) {
     gs.ball = { x: W / 2, y: PADDLE_Y - BALL_R - 1, vx: 0, vy: 0 };
     gs.launched = false;
+  }
+
+  function loadQuestion(qi: number) {
+    const correct = queueRef.current[qi];
+    gsRef.current!.bricks     = makeBricks(correct, words);
+    gsRef.current!.definition = correct.definition;
+    gsRef.current!.category   = correct.category;
+    resetBall(gsRef.current!);
+    setQIndex(qi);
   }
 
   const launch = useCallback(() => {
@@ -218,7 +255,7 @@ export default function WordBreaker({ words }: Props) {
     gs.ball.vy = Math.sin(angle) * BALL_SPEED;
   }, []);
 
-  const stopLoop = useCallback(() => cancelAnimationFrame(rafRef.current), []);
+  const stopLoop  = useCallback(() => cancelAnimationFrame(rafRef.current), []);
 
   const startLoop = useCallback(() => {
     const canvas = canvasRef.current;
@@ -229,12 +266,11 @@ export default function WordBreaker({ words }: Props) {
       const gs = gsRef.current;
       if (!gs || gs.phase !== 'playing') return;
 
-      // Paddle tracks mouse (smooth)
+      // Paddle smoothly tracks mouse
       gs.paddle.x += (mouseXRef.current - gs.paddle.x) * 0.2;
-      gs.paddle.x = Math.max(PADDLE_W / 2, Math.min(W - PADDLE_W / 2, gs.paddle.x));
+      gs.paddle.x  = Math.max(PADDLE_W / 2, Math.min(W - PADDLE_W / 2, gs.paddle.x));
 
       if (gs.launched) {
-        // Ball stuck to paddle until launched
         const b = gs.ball;
         b.x += b.vx;
         b.y += b.vy;
@@ -244,7 +280,7 @@ export default function WordBreaker({ words }: Props) {
         if (b.x + BALL_R >= W)  { b.vx = -Math.abs(b.vx); b.x = W - BALL_R; }
         if (b.y - BALL_R <= 0)  { b.vy =  Math.abs(b.vy); b.y = BALL_R; }
 
-        // Paddle bounce
+        // Paddle bounce with spin
         if (
           b.y + BALL_R >= PADDLE_Y &&
           b.y - BALL_R <= PADDLE_Y + PADDLE_H &&
@@ -252,8 +288,7 @@ export default function WordBreaker({ words }: Props) {
           b.x <= gs.paddle.x + PADDLE_W / 2
         ) {
           b.vy = -Math.abs(b.vy);
-          b.y = PADDLE_Y - BALL_R - 1;
-          // Spin based on where ball hits
+          b.y  = PADDLE_Y - BALL_R - 1;
           const hit = (b.x - gs.paddle.x) / (PADDLE_W / 2);
           b.vx = hit * 4.5;
           const spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
@@ -281,21 +316,13 @@ export default function WordBreaker({ words }: Props) {
                 setTimeout(() => loadQuestion(nextQi), 400);
               }
             } else {
-              // Wrong brick — bounce but don't break
               resolveCollision(b, brick);
             }
           }
         }
-        // Correct brick resolved after the loop to avoid double-bounce
-        for (const brick of gs.bricks) {
-          if (!brick.alive) continue;
-          if (ballBrickCollision(b, brick) && brick.isCorrect) {
-            resolveCollision(b, brick);
-          }
-        }
 
-        // Ball fell off bottom
-        if (b.y - BALL_R > H) {
+        // Ball fell off bottom of game area
+        if (b.y - BALL_R > H_GAME) {
           gs.lives--;
           setLives(gs.lives);
           triggerFlash('red');
@@ -307,7 +334,7 @@ export default function WordBreaker({ words }: Props) {
           }
         }
       } else {
-        // Ball glued to paddle
+        // Ball glued to paddle before launch
         gs.ball.x = gs.paddle.x;
         gs.ball.y = PADDLE_Y - BALL_R - 1;
       }
@@ -322,49 +349,47 @@ export default function WordBreaker({ words }: Props) {
   const start = useCallback(() => {
     stopLoop();
     const q = shuffle(words).slice(0, 30);
-    queueRef.current = q;
-    qIndexRef.current = 0;
+    queueRef.current   = q;
+    qIndexRef.current  = 0;
     correctCountRef.current = 0;
-    scoreRef.current = 0;
+    scoreRef.current   = 0;
 
     const correct = q[0];
-    const gs: GameState = {
-      ball: { x: W / 2, y: PADDLE_Y - BALL_R - 1, vx: 0, vy: 0 },
-      paddle: { x: W / 2 },
-      bricks: makeBricks(correct, words),
-      lives: 3,
-      score: 0,
-      phase: 'playing',
-      launched: false,
+    gsRef.current = {
+      ball:       { x: W / 2, y: PADDLE_Y - BALL_R - 1, vx: 0, vy: 0 },
+      paddle:     { x: W / 2 },
+      bricks:     makeBricks(correct, words),
+      lives:      3,
+      score:      0,
+      phase:      'playing',
+      launched:   false,
+      definition: correct.definition,
+      category:   correct.category,
     };
-    gsRef.current = gs;
 
     setLives(3);
     setScore(0);
     setQIndex(0);
-    setDef(correct.definition);
-    setCat(correct.category);
     setPhase('playing');
-    // startLoop() is triggered by the useEffect below once the canvas is in the DOM
   }, [words, stopLoop]);
 
-  // Start loop after React mounts the canvas (phase flip → re-render → effect)
   useEffect(() => {
     if (phase === 'playing') startLoop();
     return () => stopLoop();
   }, [phase, startLoop, stopLoop]);
 
-  // Handle canvas mouse events
   const getCanvasX = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    const scale = W / rect.width;
+    const rect   = canvas.getBoundingClientRect();
+    const scale  = W / rect.width;
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     return (clientX - rect.left) * scale;
   };
 
-  const onMouseMove = (e: React.MouseEvent) => { mouseXRef.current = getCanvasX(e); };
-  const onTouchMove = (e: React.TouchEvent) => { e.preventDefault(); mouseXRef.current = getCanvasX(e); };
+  const onMouseMove = (e: React.MouseEvent)  => { mouseXRef.current = getCanvasX(e); };
+  const onTouchMove = (e: React.TouchEvent)  => { e.preventDefault(); mouseXRef.current = getCanvasX(e); };
+
+  // ── Screens ──────────────────────────────────────────────────────────────────
 
   if (words.length < 4) {
     return <div className="text-center py-20 text-gray-400"><p className="text-lg">Add at least 4 words to play Word Breaker!</p></div>;
@@ -375,8 +400,8 @@ export default function WordBreaker({ words }: Props) {
       <div className="max-w-md mx-auto text-center py-16 bounce-in">
         <div className="text-6xl mb-6">🧱</div>
         <h2 className="text-3xl font-bold mb-3">Word Breaker</h2>
-        <p className="text-gray-500 mb-2">The <strong className="text-yellow-500">gold brick</strong> is the correct word. Aim the ball at it!</p>
-        <p className="text-gray-400 text-sm mb-8">Move your mouse to control the paddle. Gray bricks bounce the ball — only the gold one breaks. 3 lives.</p>
+        <p className="text-gray-500 mb-2">Read the definition at the bottom, then aim the ball at the matching word brick!</p>
+        <p className="text-gray-400 text-sm mb-8">Move your mouse to steer the paddle. All bricks look the same — only the correct word breaks. 3 lives.</p>
         <button onClick={start} className="px-10 py-4 bg-indigo-600 text-white rounded-full font-bold text-lg hover:bg-indigo-700 transition-colors shadow-lg">
           Start!
         </button>
@@ -410,17 +435,15 @@ export default function WordBreaker({ words }: Props) {
             <Heart key={i} size={22} className={i < lives ? 'text-red-500 fill-red-500' : 'text-gray-200 fill-gray-200'} />
           ))}
         </div>
-        <span className="text-sm text-gray-500">Word {qIndex + 1} / {Math.min(queueRef.current.length, 30)}</span>
+        <span className="text-sm text-gray-500">Word {qIndex + 1} / {queueRef.current.length}</span>
         <span className="font-bold text-gray-800 tabular-nums">{score} pts</span>
       </div>
 
-      {/* Canvas */}
-      <div
-        className={[
-          'rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl mb-4',
-          flash === 'green' ? 'flash-green' : flash === 'red' ? 'flash-red' : '',
-        ].join(' ')}
-      >
+      {/* Canvas (game area + definition strip baked in) */}
+      <div className={[
+        'rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl',
+        flash === 'green' ? 'flash-green' : flash === 'red' ? 'flash-red' : '',
+      ].join(' ')}>
         <canvas
           ref={canvasRef}
           width={W}
@@ -431,15 +454,6 @@ export default function WordBreaker({ words }: Props) {
           onTouchStart={launch}
           style={{ width: '100%', display: 'block', cursor: 'none', touchAction: 'none' }}
         />
-      </div>
-
-      {/* Definition */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 text-center">
-        <span className={`text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full border mb-2 inline-block ${CATEGORY_COLORS[category]}`}>
-          {CATEGORY_LABELS[category]}
-        </span>
-        <p className="text-xs text-gray-400 mb-1">Break the brick that means:</p>
-        <p className="text-lg font-semibold text-gray-800">{definition}</p>
       </div>
     </div>
   );
