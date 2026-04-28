@@ -1,19 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS } from '../../types';
 import { Heart, Trophy } from 'lucide-react';
+import { shuffle, selectWords } from '../../lib/wordUtils';
 
 const MAX_LIVES = 3;
 const BASE_SPEED = 5.5; // seconds to cross the arena
 const ARENA_PX = 400;   // arena height in px
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 // ─── Individual falling word ─────────────────────────────────────────────────
 
@@ -125,7 +117,11 @@ export default function WordRain({ words }: Props) {
     const opts = shuffle([correct, ...distractors]);
     const xs = shuffle([8, 27, 52, 72]);
     const level = Math.floor(correctCountRef.current / 5) + 1;
-    const spd = Math.max(2.5, BASE_SPEED - (level - 1) * 0.4);
+    const baseSpd = Math.max(2.5, BASE_SPEED - (level - 1) * 0.4);
+    // Longer word+definition → more seconds to fall so user has time to read
+    const totalLen = correct.word.length + correct.definition.length;
+    const lengthBonus = Math.min(4, Math.max(0, (totalLen - 20) / 25));
+    const spd = baseSpd + lengthBonus;
     return {
       word: correct,
       options: opts.map((w, i) => ({
@@ -177,7 +173,7 @@ export default function WordRain({ words }: Props) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const start = useCallback(() => {
-    const q = shuffle(words).slice(0, 30);
+    const q = selectWords(words);
     queueRef.current = q;
     qIndexRef.current = 0;
     livesRef.current = MAX_LIVES;

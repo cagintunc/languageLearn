@@ -1,21 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS } from '../../types';
 import { CheckCircle, XCircle, Trophy, Zap, Timer } from 'lucide-react';
+import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
 }
 
 const GAME_DURATION = 60;
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 function pickQuestion(words: Word[]): { current: Word; options: Word[] } {
   const current = shuffle(words)[0];
@@ -45,7 +37,7 @@ export default function TimeAttack({ words }: Props) {
   }, []);
 
   const start = useCallback(() => {
-    poolRef.current = shuffle(words).slice(0, 30);
+    poolRef.current = selectWords(words);
     setPhase('playing');
     setTimeLeft(GAME_DURATION);
     setScore(0);

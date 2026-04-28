@@ -1,22 +1,14 @@
 import { useState, useCallback } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_BG } from '../../types';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
+import { selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 export default function Flashcard({ words }: Props) {
-  const [deck, setDeck] = useState(() => shuffle(words).slice(0, 30));
+  const [deck, setDeck] = useState(() => selectWords(words));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [known, setKnown] = useState<Set<string>>(new Set());
@@ -34,7 +26,7 @@ export default function Flashcard({ words }: Props) {
   }, []);
 
   const reshuffle = () => {
-    setDeck(shuffle(words).slice(0, 30));
+    setDeck(selectWords(words));
     setIndex(0);
     setFlipped(false);
     setKnown(new Set());

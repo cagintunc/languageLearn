@@ -1,18 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS, GameScore } from '../../types';
 import { CheckCircle, XCircle, Trophy, Lightbulb } from 'lucide-react';
+import { selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 function blankSentence(word: string, example: string): string {
@@ -34,7 +26,7 @@ export default function FillBlank({ words }: Props) {
   const wordsWithExamples = words.filter(w => w.example && w.example.includes(w.word));
 
   const init = useCallback(() => {
-    const q = shuffle(wordsWithExamples).slice(0, 30);
+    const q = selectWords(wordsWithExamples);
     setQueue(q);
     setQIndex(0);
     setInput('');

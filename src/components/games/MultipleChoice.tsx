@@ -1,18 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS, GameScore } from '../../types';
 import { CheckCircle, XCircle, Trophy } from 'lucide-react';
+import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 function getOptions(correct: Word, allWords: Word[]): Word[] {
@@ -31,7 +23,7 @@ export default function MultipleChoice({ words }: Props) {
   const [shake, setShake] = useState<string | null>(null);
 
   const init = useCallback(() => {
-    const q = shuffle(words).slice(0, 30);
+    const q = selectWords(words);
     setQueue(q);
     setQIndex(0);
     setSelected(null);

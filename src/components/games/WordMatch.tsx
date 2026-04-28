@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Word, GameScore } from '../../types';
 import { Trophy, RefreshCw } from 'lucide-react';
+import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
@@ -11,15 +12,6 @@ interface MatchItem {
   word: Word;
   type: 'word' | 'definition';
   text: string;
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 export default function WordMatch({ words }: Props) {
@@ -50,7 +42,7 @@ export default function WordMatch({ words }: Props) {
   }, []);
 
   const init = useCallback(() => {
-    const q = shuffle(words).slice(0, 30);
+    const q = selectWords(words);
     setQueue(q);
     setBatchIndex(0);
     setScore({ correct: 0, total: 0 });

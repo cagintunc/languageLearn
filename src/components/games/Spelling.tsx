@@ -1,18 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS, GameScore } from '../../types';
 import { Trophy, CheckCircle, XCircle, Volume2 } from 'lucide-react';
+import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 function scramble(word: string): string {
@@ -39,7 +31,7 @@ export default function Spelling({ words }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const init = useCallback(() => {
-    const q = shuffle(words).slice(0, 30);
+    const q = selectWords(words);
     setQueue(q);
     setQIndex(0);
     setInput('');

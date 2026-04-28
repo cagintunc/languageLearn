@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Word, CATEGORY_LABELS } from '../../types';
 import { Heart, Trophy } from 'lucide-react';
+import { shuffle, selectWords } from '../../lib/wordUtils';
 
 // ─── Canvas constants ─────────────────────────────────────────────────────────
 const W = 600;
@@ -15,16 +16,7 @@ const BRICK_Y = 55;
 const NUM_BRICKS = 4;
 const BRICK_START_X = (W - (NUM_BRICKS * BRICK_W + (NUM_BRICKS - 1) * BRICK_GAP)) / 2;
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-interface Brick  { x: number; y: number; word: Word; isCorrect: boolean; alive: boolean }
+interface Brick  { x: number; y: number; word: Word; isCorrect: boolean; alive: boolean; width: number }
 interface Ball   { x: number; y: number; vx: number; vy: number }
 interface Paddle { x: number }
 
@@ -40,16 +32,36 @@ interface GameState {
   category: Word['category'];
 }
 
+function slotOf(w: Word): number {
+  return w.category === 'phrasal-verb' ? 2 : 1;
+}
+
 function makeBricks(correct: Word, all: Word[]): Brick[] {
-  const distractors = shuffle(all.filter(w => w.id !== correct.id)).slice(0, NUM_BRICKS - 1);
-  const words = shuffle([correct, ...distractors]);
-  return words.map((w, i) => ({
-    x: BRICK_START_X + i * (BRICK_W + BRICK_GAP),
-    y: BRICK_Y,
-    word: w,
-    isCorrect: w.id === correct.id,
-    alive: true,
-  }));
+  const TOTAL_SLOTS = NUM_BRICKS; // always 4 visual slots
+  const correctSlots = slotOf(correct);
+  let remaining = TOTAL_SLOTS - correctSlots;
+
+  // Fill remaining slots with distractors; prefer ones that fit exactly
+  const candidates = shuffle(all.filter(w => w.id !== correct.id));
+  const distractors: Word[] = [];
+  let usedSlots = 0;
+  for (const w of candidates) {
+    const s = slotOf(w);
+    if (usedSlots + s <= remaining) {
+      distractors.push(w);
+      usedSlots += s;
+      if (usedSlots >= remaining) break;
+    }
+  }
+
+  let curX = BRICK_START_X;
+  return shuffle([correct, ...distractors]).map(w => {
+    const slots = slotOf(w);
+    const brickW = slots * BRICK_W + (slots - 1) * BRICK_GAP;
+    const brick: Brick = { x: curX, y: BRICK_Y, word: w, isCorrect: w.id === correct.id, alive: true, width: brickW };
+    curX += brickW + BRICK_GAP;
+    return brick;
+  });
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -105,16 +117,17 @@ function draw(ctx: CanvasRenderingContext2D, gs: GameState, t: number) {
     grad.addColorStop(0, '#3b4f6e');
     grad.addColorStop(1, '#1e2d45');
     ctx.fillStyle = grad;
-    roundRect(ctx, b.x, b.y, BRICK_W, BRICK_H, 8);
+    roundRect(ctx, b.x, b.y, b.width, BRICK_H, 8);
     ctx.fill();
     ctx.strokeStyle = 'rgba(100,140,210,0.35)';
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.fillStyle = '#cbd5e1';
-    ctx.font = `bold ${b.word.word.length > 12 ? 12 : 14}px system-ui, sans-serif`;
+    const fontSize = b.word.word.length > Math.floor(b.width / 9) ? 12 : 14;
+    ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(b.word.word, b.x + BRICK_W / 2, b.y + BRICK_H / 2, BRICK_W - 16);
+    ctx.fillText(b.word.word, b.x + b.width / 2, b.y + BRICK_H / 2, b.width - 16);
     ctx.restore();
   }
 
@@ -188,7 +201,7 @@ function draw(ctx: CanvasRenderingContext2D, gs: GameState, t: number) {
 }
 
 function ballBrickCollision(ball: Ball, brick: Brick): boolean {
-  const nx = Math.max(brick.x, Math.min(ball.x, brick.x + BRICK_W));
+  const nx = Math.max(brick.x, Math.min(ball.x, brick.x + brick.width));
   const ny = Math.max(brick.y, Math.min(ball.y, brick.y + BRICK_H));
   const dx = ball.x - nx, dy = ball.y - ny;
   return dx * dx + dy * dy < BALL_R * BALL_R;
@@ -196,14 +209,14 @@ function ballBrickCollision(ball: Ball, brick: Brick): boolean {
 
 function resolveCollision(ball: Ball, brick: Brick) {
   const ol  = (ball.x + BALL_R) - brick.x;
-  const or_ = (brick.x + BRICK_W) - (ball.x - BALL_R);
+  const or_ = (brick.x + brick.width) - (ball.x - BALL_R);
   const ot  = (ball.y + BALL_R) - brick.y;
   const ob  = (brick.y + BRICK_H) - (ball.y - BALL_R);
   const min = Math.min(ol, or_, ot, ob);
   if      (min === ot)  { ball.vy = -Math.abs(ball.vy); ball.y = brick.y - BALL_R; }
   else if (min === ob)  { ball.vy =  Math.abs(ball.vy); ball.y = brick.y + BRICK_H + BALL_R; }
   else if (min === ol)  { ball.vx = -Math.abs(ball.vx); ball.x = brick.x - BALL_R; }
-  else                  { ball.vx =  Math.abs(ball.vx); ball.x = brick.x + BRICK_W + BALL_R; }
+  else                  { ball.vx =  Math.abs(ball.vx); ball.x = brick.x + brick.width + BALL_R; }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -348,7 +361,7 @@ export default function WordBreaker({ words }: Props) {
 
   const start = useCallback(() => {
     stopLoop();
-    const q = shuffle(words).slice(0, 30);
+    const q = selectWords(words);
     queueRef.current   = q;
     qIndexRef.current  = 0;
     correctCountRef.current = 0;
