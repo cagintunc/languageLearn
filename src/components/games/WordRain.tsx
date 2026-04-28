@@ -36,7 +36,7 @@ function Faller({ word, isCorrect, x, speed, delay, onCorrect, onMiss, onWrong }
       if (stateRef.current === 'done') return;
 
       const prog = Math.min((ts - start) / totalMs, 1);
-      const top = -56 + prog * (ARENA_PX + 70); // -56px → ARENA_PX+14px
+      const top = -80 + prog * (ARENA_PX + 94); // -80px → ARENA_PX+14px
 
       if (el.current) el.current.style.top = `${top}px`;
 
@@ -70,9 +70,9 @@ function Faller({ word, isCorrect, x, speed, delay, onCorrect, onMiss, onWrong }
     <button
       ref={el}
       onClick={handleClick}
-      style={{ position: 'absolute', left: `${x}%`, top: '-56px' }}
+      style={{ position: 'absolute', left: `${x}%`, transform: 'translateX(-50%)', top: '-80px', width: '23%', textAlign: 'center' }}
       className={[
-        'px-4 py-2.5 rounded-xl border-2 font-bold text-sm shadow-lg whitespace-nowrap select-none',
+        'px-4 py-2.5 rounded-xl border-2 font-bold text-sm shadow-lg select-none',
         'transition-[transform,opacity] duration-350',
         ended === 'correct'
           ? 'scale-150 opacity-0 bg-green-400 border-green-500 text-white'
@@ -115,7 +115,7 @@ export default function WordRain({ words }: Props) {
     const correct = q[qi];
     const distractors = shuffle(words.filter(w => w.id !== correct.id)).slice(0, 3);
     const opts = shuffle([correct, ...distractors]);
-    const xs = shuffle([8, 27, 52, 72]);
+    const xs = shuffle([12.5, 37.5, 62.5, 87.5]);
     const level = Math.floor(correctCountRef.current / 5) + 1;
     const baseSpd = Math.max(2.5, BASE_SPEED - (level - 1) * 0.4);
     // Longer word+definition → more seconds to fall so user has time to read
