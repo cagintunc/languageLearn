@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Word, WordCategory, CATEGORY_LABELS, CATEGORY_COLORS } from '../types';
-import { Plus, Trash2, Edit3, Check, X, Search, BookOpen, Filter } from 'lucide-react';
+import { Plus, Trash2, Edit3, Check, X, Search, BookOpen, Filter, AlertTriangle } from 'lucide-react';
 
 interface Props {
   words: Word[];
@@ -75,6 +75,10 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
     setShowForm(false);
   };
 
+  const duplicateOf = form.word.trim()
+    ? words.find(w => w.word.toLowerCase() === form.word.trim().toLowerCase() && w.id !== editId) ?? null
+    : null;
+
   const filtered = words.filter(w => {
     const matchSearch = w.word.toLowerCase().includes(search.toLowerCase()) ||
       w.definition.toLowerCase().includes(search.toLowerCase());
@@ -130,6 +134,12 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
                   className={`w-full px-4 py-2.5 rounded-xl border-2 outline-none transition-colors text-sm ${errors.word ? 'border-red-400' : 'border-gray-200 focus:border-indigo-400'}`}
                 />
                 {errors.word && <p className="text-xs text-red-500 mt-1">{errors.word}</p>}
+                {!errors.word && duplicateOf && (
+                  <p className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+                    <AlertTriangle size={11} />
+                    "{duplicateOf.word}" is already in your list
+                  </p>
+                )}
               </div>
 
               <div>

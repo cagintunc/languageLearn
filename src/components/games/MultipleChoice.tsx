@@ -156,9 +156,14 @@ export default function MultipleChoice({ words }: Props) {
               onClick={() => handleSelect(opt)}
               className={`${cls} ${shake === opt.id ? 'shake' : ''}`}
             >
-              {opt.word}
-              {selected !== null && isCorrect && <CheckCircle size={16} className="inline ml-2 text-green-500" />}
-              {selected !== null && isSelected && !isCorrect && <XCircle size={16} className="inline ml-2 text-red-500" />}
+              <span className="flex items-center justify-center gap-2">
+                <span>{opt.word}</span>
+                {selected !== null && isCorrect && <CheckCircle size={16} className="text-green-500 shrink-0" />}
+                {selected !== null && isSelected && !isCorrect && <XCircle size={16} className="text-red-500 shrink-0" />}
+              </span>
+              {opt.pronunciation && (
+                <span className="block text-xs font-normal font-mono mt-0.5 opacity-60">{opt.pronunciation}</span>
+              )}
             </button>
           );
         })}
