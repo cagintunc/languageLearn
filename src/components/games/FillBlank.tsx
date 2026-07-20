@@ -5,6 +5,7 @@ import { selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
+  onWordSeen?: (id: string) => void;
 }
 
 function blankSentence(word: string, example: string): string {
@@ -12,7 +13,7 @@ function blankSentence(word: string, example: string): string {
   return example.replace(regex, '_____');
 }
 
-export default function FillBlank({ words }: Props) {
+export default function FillBlank({ words, onWordSeen }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -38,6 +39,10 @@ export default function FillBlank({ words }: Props) {
   }, [wordsWithExamples.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { init(); }, [init]);
+
+  useEffect(() => {
+    if (queue[qIndex]) onWordSeen?.(queue[qIndex].id);
+  }, [qIndex, queue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const advance = useCallback(() => {
     const next = qIndex + 1;

@@ -5,6 +5,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
+  onWordSeen?: (id: string) => void;
 }
 
 const GAME_DURATION = 60;
@@ -15,7 +16,7 @@ function pickQuestion(words: Word[]): { current: Word; options: Word[] } {
   return { current, options: shuffle([current, ...pool]) };
 }
 
-export default function TimeAttack({ words }: Props) {
+export default function TimeAttack({ words, onWordSeen }: Props) {
   const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [score, setScore] = useState(0);
@@ -46,6 +47,10 @@ export default function TimeAttack({ words }: Props) {
     setCorrect(0);
     loadNext();
   }, [words, loadNext]);
+
+  useEffect(() => {
+    if (current) onWordSeen?.(current.id);
+  }, [current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (phase !== 'playing') return;

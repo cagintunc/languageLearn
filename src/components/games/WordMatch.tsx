@@ -5,6 +5,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
+  onWordSeen?: (id: string) => void;
 }
 
 interface MatchItem {
@@ -14,7 +15,7 @@ interface MatchItem {
   text: string;
 }
 
-export default function WordMatch({ words }: Props) {
+export default function WordMatch({ words, onWordSeen }: Props) {
   const BATCH = 5;
   const [batch, setBatch] = useState<Word[]>([]);
   const [batchIndex, setBatchIndex] = useState(0);
@@ -51,6 +52,10 @@ export default function WordMatch({ words }: Props) {
   }, [words, loadBatch]);
 
   useEffect(() => { init(); }, [init]);
+
+  useEffect(() => {
+    batch.forEach(w => onWordSeen?.(w.id));
+  }, [batch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (item: MatchItem) => {
     if (matched.has(item.word.id) || wrong.has(item.id)) return;

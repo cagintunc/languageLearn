@@ -90,9 +90,9 @@ function Faller({ word, isCorrect, x, speed, delay, onCorrect, onMiss, onWrong }
 
 // ─── Parent game ─────────────────────────────────────────────────────────────
 
-interface Props { words: Word[]; }
+interface Props { words: Word[]; onWordSeen?: (id: string) => void; }
 
-export default function WordRain({ words }: Props) {
+export default function WordRain({ words, onWordSeen }: Props) {
   const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
   const [lives, setLives] = useState(MAX_LIVES);
   const [score, setScore] = useState(0);
@@ -103,6 +103,8 @@ export default function WordRain({ words }: Props) {
   const livesRef = useRef(MAX_LIVES);
   const queueRef = useRef<Word[]>([]);
   const qIndexRef = useRef(0);
+  const onWordSeenRef = useRef(onWordSeen);
+  useEffect(() => { onWordSeenRef.current = onWordSeen; }, [onWordSeen]);
   const correctCountRef = useRef(0);
   const scoreRef = useRef(0);
 
@@ -113,6 +115,7 @@ export default function WordRain({ words }: Props) {
 
   function buildQ(q: Word[], qi: number) {
     const correct = q[qi];
+    onWordSeenRef.current?.(correct.id);
     const distractors = shuffle(words.filter(w => w.id !== correct.id)).slice(0, 3);
     const opts = shuffle([correct, ...distractors]);
     const xs = shuffle([12.5, 37.5, 62.5, 87.5]);

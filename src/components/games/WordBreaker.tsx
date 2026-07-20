@@ -221,9 +221,9 @@ function resolveCollision(ball: Ball, brick: Brick) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-interface Props { words: Word[] }
+interface Props { words: Word[]; onWordSeen?: (id: string) => void; }
 
-export default function WordBreaker({ words }: Props) {
+export default function WordBreaker({ words, onWordSeen }: Props) {
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const rafRef     = useRef(0);
   const gsRef      = useRef<GameState | null>(null);
@@ -237,6 +237,8 @@ export default function WordBreaker({ words }: Props) {
 
   const queueRef        = useRef<Word[]>([]);
   const qIndexRef       = useRef(0);
+  const onWordSeenRef   = useRef(onWordSeen);
+  useEffect(() => { onWordSeenRef.current = onWordSeen; }, [onWordSeen]);
   const correctCountRef = useRef(0);
   const scoreRef        = useRef(0);
 
@@ -252,6 +254,7 @@ export default function WordBreaker({ words }: Props) {
 
   function loadQuestion(qi: number) {
     const correct = queueRef.current[qi];
+    onWordSeenRef.current?.(correct.id);
     gsRef.current!.bricks     = makeBricks(correct, words);
     gsRef.current!.definition = correct.definition;
     gsRef.current!.category   = correct.category;

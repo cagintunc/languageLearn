@@ -21,6 +21,12 @@ import {
 type View = 'home' | 'manage' | 'game';
 type CategoryFilter = WordCategory | 'all';
 
+const COOLDOWN_MS = 2 * 60 * 60 * 1000;
+
+function loadCooldowns(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem('wc_v1') ?? '{}'); } catch { return {}; }
+}
+
 const GAMES: { id: GameType; label: string; desc: string; icon: React.ReactNode; min: number }[] = [
   { id: 'flashcard', label: 'Flashcard', desc: 'Flip cards to reveal definitions and mark what you know', icon: <Layers size={22} />, min: 1 },
   { id: 'multiple-choice', label: 'Multiple Choice', desc: 'See a definition — pick the matching word from 4 options', icon: <HelpCircle size={22} />, min: 4 },
@@ -44,6 +50,16 @@ function AppContent() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [showCatDropdown, setShowCatDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [cooldowns, setCooldowns] = useState<Record<string, number>>(loadCooldowns);
+
+  const onWordSeen = useCallback((id: string) => {
+    const ts = Date.now();
+    setCooldowns(prev => {
+      const next = { ...prev, [id]: ts };
+      localStorage.setItem('wc_v1', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   const loadWords = useCallback(async () => {
     if (!user) return;
@@ -84,13 +100,18 @@ function AppContent() {
     [words, categoryFilter]
   );
 
+  const gameWords = useMemo(() => {
+    const cutoff = Date.now() - COOLDOWN_MS;
+    return filteredWords.filter(w => !cooldowns[w.id] || cooldowns[w.id] < cutoff);
+  }, [filteredWords, cooldowns]);
+
   const startGame = (gameId: GameType) => {
     setActiveGame(gameId);
     setView('game');
   };
 
   const renderGame = () => {
-    const props = { words: filteredWords };
+    const props = { words: gameWords, onWordSeen };
     switch (activeGame) {
       case 'flashcard': return <Flashcard {...props} />;
       case 'multiple-choice': return <MultipleChoice {...props} />;
@@ -234,10 +255,57 @@ function AppContent() {
                   </div>
                 )}
 
+                {gameWords.length < filteredWords.length && (
+                  <p className="text-xs text-center text-gray-400 -mt-4 mb-6">
+                    {gameWords.length} of {filteredWords.length} words available · {filteredWords.length - gameWords.length} on 2h cooldown
+                  </p>
+                )}
+
+                {/* Word previews per category */}
+                {words.length > 0 && (
+                  <div className="mb-10 space-y-4">
+                    {CATEGORIES.filter(cat =>
+                      words.some(w => w.category === cat) &&
+                      (categoryFilter === 'all' || categoryFilter === cat)
+                    ).map(cat => {
+                      const catWords = words.filter(w => w.category === cat).slice(0, 5);
+                      return (
+                        <div key={cat} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${CATEGORY_COLORS[cat]}`}>
+                              {CATEGORY_LABELS[cat]}s
+                            </span>
+                            <button
+                              onClick={() => setView('manage')}
+                              className="text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+                            >
+                              View all →
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {catWords.map(w => (
+                              <div key={w.id} className="group relative">
+                                <span className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-sm font-medium text-gray-700 cursor-default block">
+                                  {w.word}
+                                </span>
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 max-w-xs">
+                                  {w.definition}
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* Game cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {GAMES.map(g => {
-                    const available = filteredWords.length >= g.min;
+                    const available = gameWords.length >= g.min;
+                    const cooldownBlocked = !available && filteredWords.length >= g.min;
                     return (
                       <button
                         key={g.id}
@@ -254,7 +322,10 @@ function AppContent() {
                         </div>
                         <h3 className="font-bold text-gray-800 mb-1">{g.label}</h3>
                         <p className="text-sm text-gray-500">{g.desc}</p>
-                        {!available && (
+                        {!available && cooldownBlocked && (
+                          <p className="text-xs text-blue-500 mt-2">Words on cooldown — check back in ~2h</p>
+                        )}
+                        {!available && !cooldownBlocked && (
                           <p className="text-xs text-amber-600 mt-2">Need at least {g.min} word{g.min > 1 ? 's' : ''}</p>
                         )}
                       </button>

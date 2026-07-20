@@ -5,6 +5,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
+  onWordSeen?: (id: string) => void;
 }
 
 function getOptions(correct: Word, allWords: Word[]): Word[] {
@@ -13,7 +14,7 @@ function getOptions(correct: Word, allWords: Word[]): Word[] {
   return shuffle([correct, ...distractors]);
 }
 
-export default function MultipleChoice({ words }: Props) {
+export default function MultipleChoice({ words, onWordSeen }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -39,8 +40,9 @@ export default function MultipleChoice({ words }: Props) {
   useEffect(() => {
     if (queue.length > 0 && qIndex < queue.length) {
       setOptions(getOptions(queue[qIndex], words));
+      onWordSeen?.(queue[qIndex].id);
     }
-  }, [qIndex, queue, words]);
+  }, [qIndex, queue, words]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (words.length < 2) {
     return (

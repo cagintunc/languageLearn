@@ -1,17 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS, CATEGORY_BG } from '../../types';
 import { ChevronLeft, ChevronRight, RotateCcw, Shuffle } from 'lucide-react';
 import { selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
+  onWordSeen?: (id: string) => void;
 }
 
-export default function Flashcard({ words }: Props) {
+export default function Flashcard({ words, onWordSeen }: Props) {
   const [deck, setDeck] = useState(() => selectWords(words));
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [known, setKnown] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (deck[index]) onWordSeen?.(deck[index].id);
+  }, [index, deck]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const current = deck[index];
 

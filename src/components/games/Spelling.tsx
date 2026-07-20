@@ -5,6 +5,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
+  onWordSeen?: (id: string) => void;
 }
 
 function scramble(word: string): string {
@@ -19,7 +20,7 @@ function scramble(word: string): string {
   return result;
 }
 
-export default function Spelling({ words }: Props) {
+export default function Spelling({ words, onWordSeen }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -52,8 +53,9 @@ export default function Spelling({ words }: Props) {
       const s = scramble(queue[qIndex].word);
       setScrambled(s);
       setLetterBoxes(s.split('').map(() => ''));
+      onWordSeen?.(queue[qIndex].id);
     }
-  }, [qIndex, queue]);
+  }, [qIndex, queue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const advance = useCallback(() => {
     const next = qIndex + 1;

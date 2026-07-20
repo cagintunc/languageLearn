@@ -5,6 +5,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
+  onWordSeen?: (id: string) => void;
 }
 
 function getDefOptions(correct: Word, allWords: Word[]): Word[] {
@@ -12,7 +13,7 @@ function getDefOptions(correct: Word, allWords: Word[]): Word[] {
   return shuffle([correct, ...pool]);
 }
 
-export default function ReverseChoice({ words }: Props) {
+export default function ReverseChoice({ words, onWordSeen }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -38,8 +39,9 @@ export default function ReverseChoice({ words }: Props) {
   useEffect(() => {
     if (queue.length > 0 && qIndex < queue.length) {
       setOptions(getDefOptions(queue[qIndex], words));
+      onWordSeen?.(queue[qIndex].id);
     }
-  }, [qIndex, queue, words]);
+  }, [qIndex, queue, words]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (words.length < 4) {
     return (
