@@ -29,6 +29,15 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [expandedCats, setExpandedCats] = useState<Set<WordCategory>>(new Set());
+
+  const PREVIEW_LIMIT = 5;
+  const toggleExpand = (cat: WordCategory) =>
+    setExpandedCats(prev => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
 
   const validate = () => {
     const e: typeof errors = {};
@@ -234,7 +243,7 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setExpandedCats(new Set()); }}
             placeholder="Search words or definitions..."
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-indigo-400 outline-none transition-colors text-sm"
           />
@@ -243,7 +252,7 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
           <Filter size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <select
             value={filterCat}
-            onChange={e => setFilterCat(e.target.value as WordCategory | 'all')}
+            onChange={e => { setFilterCat(e.target.value as WordCategory | 'all'); setExpandedCats(new Set()); }}
             className="pl-9 pr-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-indigo-400 outline-none transition-colors text-sm bg-white"
           >
             <option value="all">All Categories</option>
@@ -262,42 +271,56 @@ export default function WordManager({ words, onAdd, onUpdate, onDelete }: Props)
         </div>
       ) : (
         <div className="space-y-8">
-          {CATEGORIES.filter(cat => grouped[cat].length > 0).map(cat => (
-            <div key={cat}>
-              <h3 className={`inline-flex text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border mb-3 ${CATEGORY_COLORS[cat]}`}>
-                {CATEGORY_LABELS[cat]} ({grouped[cat].length})
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {grouped[cat].map(w => (
-                  <div key={w.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-1 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-bold text-gray-800">{w.word}</p>
-                        {w.pronunciation && <p className="text-xs text-indigo-400 font-mono">{w.pronunciation}</p>}
-                        {w.translation && <p className="text-xs text-gray-400">{w.translation}</p>}
+          {CATEGORIES.filter(cat => grouped[cat].length > 0).map(cat => {
+            const all = grouped[cat];
+            const isExpanded = expandedCats.has(cat);
+            const visible = isExpanded ? all : all.slice(0, PREVIEW_LIMIT);
+            const hidden = all.length - PREVIEW_LIMIT;
+            return (
+              <div key={cat}>
+                <h3 className={`inline-flex text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border mb-3 ${CATEGORY_COLORS[cat]}`}>
+                  {CATEGORY_LABELS[cat]} ({all.length})
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {visible.map(w => (
+                    <div key={w.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-1 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-gray-800">{w.word}</p>
+                          {w.pronunciation && <p className="text-xs text-indigo-400 font-mono">{w.pronunciation}</p>}
+                          {w.translation && <p className="text-xs text-gray-400">{w.translation}</p>}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => startEdit(w)}
+                            className="p-1.5 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            onClick={() => onDelete(w.id)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button
-                          onClick={() => startEdit(w)}
-                          className="p-1.5 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button
-                          onClick={() => onDelete(w.id)}
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      <p className="text-sm text-gray-600">{w.definition}</p>
+                      {w.example && <p className="text-xs text-gray-400 italic">"{w.example}"</p>}
                     </div>
-                    <p className="text-sm text-gray-600">{w.definition}</p>
-                    {w.example && <p className="text-xs text-gray-400 italic">"{w.example}"</p>}
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {all.length > PREVIEW_LIMIT && (
+                  <button
+                    onClick={() => toggleExpand(cat)}
+                    className="mt-3 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
+                  >
+                    {isExpanded ? '▲ Show less' : `▼ Show ${hidden} more ${CATEGORY_LABELS[cat].toLowerCase()}${hidden > 1 ? 's' : ''}`}
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
