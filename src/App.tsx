@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Word, WordCategory, CATEGORY_LABELS, CATEGORY_COLORS, GameType } from './types';
 import { fetchWords, addWord, updateWord, deleteWord } from './data/firestore';
 import { useAuth } from './context/AuthContext';
@@ -101,13 +101,24 @@ function AppContent() {
     [words, categoryFilter]
   );
 
+  const gameWordsRef = useRef<Word[]>([]);
   const gameWords = useMemo(() => {
     const cutoff = Date.now() - COOLDOWN_MS;
     // While a game is in progress, use the cooldown snapshot taken at session
     // start — otherwise words seen during play get flagged live and vanish
     // out from under the active game.
     const source = view === 'game' ? sessionCooldowns : cooldowns;
-    return filteredWords.filter(w => !source[w.id] || source[w.id] < cutoff);
+    const next = filteredWords.filter(w => !source[w.id] || source[w.id] < cutoff);
+    const prev = gameWordsRef.current;
+    // Keep the same array reference when the id set hasn't actually changed.
+    // Games key their internal effects off this prop's identity — a fresh
+    // array with identical contents was retriggering their init effect on
+    // every render (e.g. every time onWordSeen fired), silently restarting
+    // the round each time a word was shown.
+    const same = prev.length === next.length && prev.every((w, i) => w.id === next[i].id);
+    if (same) return prev;
+    gameWordsRef.current = next;
+    return next;
   }, [filteredWords, cooldowns, sessionCooldowns, view]);
 
   const startGame = (gameId: GameType) => {
