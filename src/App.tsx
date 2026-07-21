@@ -51,6 +51,7 @@ function AppContent() {
   const [showCatDropdown, setShowCatDropdown] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [cooldowns, setCooldowns] = useState<Record<string, number>>(loadCooldowns);
+  const [sessionCooldowns, setSessionCooldowns] = useState<Record<string, number>>({});
 
   const onWordSeen = useCallback((id: string) => {
     const ts = Date.now();
@@ -102,10 +103,15 @@ function AppContent() {
 
   const gameWords = useMemo(() => {
     const cutoff = Date.now() - COOLDOWN_MS;
-    return filteredWords.filter(w => !cooldowns[w.id] || cooldowns[w.id] < cutoff);
-  }, [filteredWords, cooldowns]);
+    // While a game is in progress, use the cooldown snapshot taken at session
+    // start — otherwise words seen during play get flagged live and vanish
+    // out from under the active game.
+    const source = view === 'game' ? sessionCooldowns : cooldowns;
+    return filteredWords.filter(w => !source[w.id] || source[w.id] < cutoff);
+  }, [filteredWords, cooldowns, sessionCooldowns, view]);
 
   const startGame = (gameId: GameType) => {
+    setSessionCooldowns(cooldowns);
     setActiveGame(gameId);
     setView('game');
   };
