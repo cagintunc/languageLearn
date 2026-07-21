@@ -24,7 +24,7 @@ type CategoryFilter = WordCategory | 'all';
 const COOLDOWN_MS = 2 * 60 * 60 * 1000;
 
 function loadCooldowns(): Record<string, number> {
-  try { return JSON.parse(localStorage.getItem('wc_v2') ?? '{}'); } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem('wc_v3') ?? '{}'); } catch { return {}; }
 }
 
 const GAMES: { id: GameType; label: string; desc: string; icon: React.ReactNode; min: number }[] = [
@@ -57,7 +57,7 @@ function AppContent() {
     const ts = Date.now();
     setCooldowns(prev => {
       const next = { ...prev, [id]: ts };
-      localStorage.setItem('wc_v2', JSON.stringify(next));
+      localStorage.setItem('wc_v3', JSON.stringify(next));
       return next;
     });
   }, []);
