@@ -6,6 +6,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 interface Props {
   words: Word[];
   onWordSeen?: (id: string) => void;
+  onWordMiss?: (id: string) => void;
 }
 
 const GAME_DURATION = 60;
@@ -16,7 +17,7 @@ function pickQuestion(words: Word[]): { current: Word; options: Word[] } {
   return { current, options: shuffle([current, ...pool]) };
 }
 
-export default function TimeAttack({ words, onWordSeen }: Props) {
+export default function TimeAttack({ words, onWordSeen, onWordMiss }: Props) {
   const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
   const [timeLeft, setTimeLeft] = useState(GAME_DURATION);
   const [score, setScore] = useState(0);
@@ -84,6 +85,7 @@ export default function TimeAttack({ words, onWordSeen }: Props) {
     } else {
       setStreak(0);
       setFlash('wrong');
+      onWordMiss?.(current.id);
     }
     setTimeout(() => {
       setFlash(null);

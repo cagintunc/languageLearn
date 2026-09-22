@@ -6,6 +6,7 @@ import { selectWords } from '../../lib/wordUtils';
 interface Props {
   words: Word[];
   onWordSeen?: (id: string) => void;
+  onWordMiss?: (id: string) => void;
 }
 
 function blankSentence(word: string, example: string): string {
@@ -13,7 +14,7 @@ function blankSentence(word: string, example: string): string {
   return example.replace(regex, '_____');
 }
 
-export default function FillBlank({ words, onWordSeen }: Props) {
+export default function FillBlank({ words, onWordSeen, onWordMiss }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -64,6 +65,7 @@ export default function FillBlank({ words, onWordSeen }: Props) {
     const correct = input.trim().toLowerCase() === current.word.toLowerCase();
     setStatus(correct ? 'correct' : 'wrong');
     setScore(s => ({ correct: s.correct + (correct ? 1 : 0), total: s.total + 1 }));
+    if (!correct) onWordMiss?.(current.id);
     setTimeout(advance, correct ? 1000 : 2000);
   };
 

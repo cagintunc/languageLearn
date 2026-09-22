@@ -6,6 +6,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 interface Props {
   words: Word[];
   onWordSeen?: (id: string) => void;
+  onWordMiss?: (id: string) => void;
 }
 
 function scramble(word: string): string {
@@ -20,7 +21,7 @@ function scramble(word: string): string {
   return result;
 }
 
-export default function Spelling({ words, onWordSeen }: Props) {
+export default function Spelling({ words, onWordSeen, onWordMiss }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [input, setInput] = useState('');
@@ -75,6 +76,7 @@ export default function Spelling({ words, onWordSeen }: Props) {
     const correct = input.trim().toLowerCase() === current.word.toLowerCase();
     setStatus(correct ? 'correct' : 'wrong');
     setScore(s => ({ correct: s.correct + (correct ? 1 : 0), total: s.total + 1 }));
+    if (!correct) onWordMiss?.(current.id);
     setTimeout(advance, correct ? 1000 : 2000);
   };
 

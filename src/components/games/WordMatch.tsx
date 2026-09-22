@@ -6,6 +6,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 interface Props {
   words: Word[];
   onWordSeen?: (id: string) => void;
+  onWordMiss?: (id: string) => void;
 }
 
 interface MatchItem {
@@ -15,7 +16,7 @@ interface MatchItem {
   text: string;
 }
 
-export default function WordMatch({ words, onWordSeen }: Props) {
+export default function WordMatch({ words, onWordSeen, onWordMiss }: Props) {
   const BATCH = 5;
   const [batch, setBatch] = useState<Word[]>([]);
   const [batchIndex, setBatchIndex] = useState(0);
@@ -95,6 +96,8 @@ export default function WordMatch({ words, onWordSeen }: Props) {
       const wrongSet = new Set([...wrong, selected.id, item.id]);
       setWrong(wrongSet);
       setScore(s => ({ correct: s.correct, total: s.total + 1 }));
+      onWordMiss?.(selected.word.id);
+      onWordMiss?.(item.word.id);
       setSelected(null);
       setTimeout(() => {
         setWrong(prev => {

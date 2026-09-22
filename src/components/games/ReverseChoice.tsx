@@ -6,6 +6,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 interface Props {
   words: Word[];
   onWordSeen?: (id: string) => void;
+  onWordMiss?: (id: string) => void;
 }
 
 function getDefOptions(correct: Word, allWords: Word[]): Word[] {
@@ -13,7 +14,7 @@ function getDefOptions(correct: Word, allWords: Word[]): Word[] {
   return shuffle([correct, ...pool]);
 }
 
-export default function ReverseChoice({ words, onWordSeen }: Props) {
+export default function ReverseChoice({ words, onWordSeen, onWordMiss }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -93,6 +94,7 @@ export default function ReverseChoice({ words, onWordSeen }: Props) {
     if (!isCorrect) {
       setShake(opt.id);
       setTimeout(() => setShake(null), 500);
+      onWordMiss?.(current.id);
     }
     setScore(s => ({ correct: s.correct + (isCorrect ? 1 : 0), total: s.total + 1 }));
     setTimeout(() => {

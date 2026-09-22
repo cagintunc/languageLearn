@@ -13,12 +13,14 @@ import ReverseChoice from './components/games/ReverseChoice';
 import WordRain from './components/games/WordRain';
 import WordBreaker from './components/games/WordBreaker';
 import WordManager from './components/WordManager';
+import TopHot from './components/TopHot';
+import { loadMisses, recordMiss } from './lib/wordStats';
 import {
   BookOpen, Zap, HelpCircle, Shuffle, PenLine,
   Layers, ChevronDown, LogOut, Loader2, Timer, BookMarked, CloudRain, Boxes,
 } from 'lucide-react';
 
-type View = 'home' | 'manage' | 'game';
+type View = 'home' | 'manage' | 'game' | 'hot';
 type CategoryFilter = WordCategory | 'all';
 
 const COOLDOWN_MS = 2 * 60 * 60 * 1000;
@@ -52,6 +54,7 @@ function AppContent() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [cooldowns, setCooldowns] = useState<Record<string, number>>(loadCooldowns);
   const [sessionCooldowns, setSessionCooldowns] = useState<Record<string, number>>({});
+  const [misses, setMisses] = useState<Record<string, number>>(loadMisses);
 
   const onWordSeen = useCallback((id: string) => {
     const ts = Date.now();
@@ -60,6 +63,10 @@ function AppContent() {
       localStorage.setItem('wc_v3', JSON.stringify(next));
       return next;
     });
+  }, []);
+
+  const onWordMiss = useCallback((id: string) => {
+    setMisses(recordMiss(id));
   }, []);
 
   const loadWords = useCallback(async () => {
@@ -128,7 +135,7 @@ function AppContent() {
   };
 
   const renderGame = () => {
-    const props = { words: gameWords, onWordSeen };
+    const props = { words: gameWords, onWordSeen, onWordMiss };
     switch (activeGame) {
       case 'flashcard': return <Flashcard {...props} />;
       case 'multiple-choice': return <MultipleChoice {...props} />;
@@ -180,6 +187,13 @@ function AppContent() {
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'manage' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               My Words
+            </button>
+            <button
+              onClick={() => setView('hot')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'hot' ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-gray-100'}`}
+            >
+              <span aria-hidden="true">🔥</span>
+              Hot 10
             </button>
 
             {/* User avatar */}
@@ -428,6 +442,9 @@ function AppContent() {
             onDelete={handleDelete}
           />
         )}
+
+        {/* HOT 10 */}
+        {view === 'hot' && <TopHot words={words} misses={misses} />}
       </main>
     </div>
   );

@@ -221,9 +221,9 @@ function resolveCollision(ball: Ball, brick: Brick) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-interface Props { words: Word[]; onWordSeen?: (id: string) => void; }
+interface Props { words: Word[]; onWordSeen?: (id: string) => void; onWordMiss?: (id: string) => void; }
 
-export default function WordBreaker({ words, onWordSeen }: Props) {
+export default function WordBreaker({ words, onWordSeen, onWordMiss }: Props) {
   const canvasRef  = useRef<HTMLCanvasElement>(null);
   const rafRef     = useRef(0);
   const gsRef      = useRef<GameState | null>(null);
@@ -239,6 +239,9 @@ export default function WordBreaker({ words, onWordSeen }: Props) {
   const qIndexRef       = useRef(0);
   const onWordSeenRef   = useRef(onWordSeen);
   useEffect(() => { onWordSeenRef.current = onWordSeen; }, [onWordSeen]);
+  const onWordMissRef   = useRef(onWordMiss);
+  useEffect(() => { onWordMissRef.current = onWordMiss; }, [onWordMiss]);
+  const targetIdRef     = useRef<string | null>(null);
   const correctCountRef = useRef(0);
   const scoreRef        = useRef(0);
 
@@ -254,6 +257,7 @@ export default function WordBreaker({ words, onWordSeen }: Props) {
 
   function loadQuestion(qi: number) {
     const correct = queueRef.current[qi];
+    targetIdRef.current = correct.id;
     onWordSeenRef.current?.(correct.id);
     gsRef.current!.bricks     = makeBricks(correct, words);
     gsRef.current!.definition = correct.definition;
@@ -342,6 +346,7 @@ export default function WordBreaker({ words, onWordSeen }: Props) {
           gs.lives--;
           setLives(gs.lives);
           triggerFlash('red');
+          if (targetIdRef.current) onWordMissRef.current?.(targetIdRef.current);
           if (gs.lives <= 0) {
             gs.phase = 'done';
             setPhase('done');
@@ -371,6 +376,7 @@ export default function WordBreaker({ words, onWordSeen }: Props) {
     scoreRef.current   = 0;
 
     const correct = q[0];
+    targetIdRef.current = correct.id;
     gsRef.current = {
       ball:       { x: W / 2, y: PADDLE_Y - BALL_R - 1, vx: 0, vy: 0 },
       paddle:     { x: W / 2 },

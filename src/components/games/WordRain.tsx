@@ -90,9 +90,9 @@ function Faller({ word, isCorrect, x, speed, delay, onCorrect, onMiss, onWrong }
 
 // ─── Parent game ─────────────────────────────────────────────────────────────
 
-interface Props { words: Word[]; onWordSeen?: (id: string) => void; }
+interface Props { words: Word[]; onWordSeen?: (id: string) => void; onWordMiss?: (id: string) => void; }
 
-export default function WordRain({ words, onWordSeen }: Props) {
+export default function WordRain({ words, onWordSeen, onWordMiss }: Props) {
   const [phase, setPhase] = useState<'idle' | 'playing' | 'done'>('idle');
   const [lives, setLives] = useState(MAX_LIVES);
   const [score, setScore] = useState(0);
@@ -105,6 +105,9 @@ export default function WordRain({ words, onWordSeen }: Props) {
   const qIndexRef = useRef(0);
   const onWordSeenRef = useRef(onWordSeen);
   useEffect(() => { onWordSeenRef.current = onWordSeen; }, [onWordSeen]);
+  const onWordMissRef = useRef(onWordMiss);
+  useEffect(() => { onWordMissRef.current = onWordMiss; }, [onWordMiss]);
+  const targetIdRef = useRef<string | null>(null);
   const correctCountRef = useRef(0);
   const scoreRef = useRef(0);
 
@@ -115,6 +118,7 @@ export default function WordRain({ words, onWordSeen }: Props) {
 
   function buildQ(q: Word[], qi: number) {
     const correct = q[qi];
+    targetIdRef.current = correct.id;
     onWordSeenRef.current?.(correct.id);
     const distractors = shuffle(words.filter(w => w.id !== correct.id)).slice(0, 3);
     const opts = shuffle([correct, ...distractors]);
@@ -165,6 +169,7 @@ export default function WordRain({ words, onWordSeen }: Props) {
     livesRef.current--;
     setLives(livesRef.current);
     triggerFlash('red');
+    if (targetIdRef.current) onWordMissRef.current?.(targetIdRef.current);
     next(livesRef.current);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -172,6 +177,7 @@ export default function WordRain({ words, onWordSeen }: Props) {
     livesRef.current--;
     setLives(livesRef.current);
     triggerFlash('red');
+    if (targetIdRef.current) onWordMissRef.current?.(targetIdRef.current);
     if (livesRef.current <= 0) setPhase('done');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

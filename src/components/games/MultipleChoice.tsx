@@ -6,6 +6,7 @@ import { shuffle, selectWords } from '../../lib/wordUtils';
 interface Props {
   words: Word[];
   onWordSeen?: (id: string) => void;
+  onWordMiss?: (id: string) => void;
 }
 
 function getOptions(correct: Word, allWords: Word[]): Word[] {
@@ -14,7 +15,7 @@ function getOptions(correct: Word, allWords: Word[]): Word[] {
   return shuffle([correct, ...distractors]);
 }
 
-export default function MultipleChoice({ words, onWordSeen }: Props) {
+export default function MultipleChoice({ words, onWordSeen, onWordMiss }: Props) {
   const [queue, setQueue] = useState<Word[]>([]);
   const [qIndex, setQIndex] = useState(0);
   const [options, setOptions] = useState<Word[]>([]);
@@ -94,6 +95,7 @@ export default function MultipleChoice({ words, onWordSeen }: Props) {
     if (!correct) {
       setShake(opt.id);
       setTimeout(() => setShake(null), 500);
+      onWordMiss?.(current.id);
     }
     setScore(s => ({ correct: s.correct + (correct ? 1 : 0), total: s.total + 1 }));
     setTimeout(() => {
