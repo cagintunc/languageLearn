@@ -17,7 +17,7 @@ import TopHot from './components/TopHot';
 import { loadMisses, recordMiss } from './lib/wordStats';
 import {
   BookOpen, Zap, HelpCircle, Shuffle, PenLine,
-  Layers, ChevronDown, LogOut, Loader2, Timer, BookMarked, CloudRain, Boxes,
+  Layers, ChevronDown, LogOut, Loader2, Timer, BookMarked, CloudRain, Boxes, Gamepad2,
 } from 'lucide-react';
 
 type View = 'home' | 'manage' | 'game' | 'hot';
@@ -166,41 +166,43 @@ function AppContent() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
           <button
             onClick={() => setView('home')}
-            className="flex items-center gap-2.5 font-bold text-lg text-indigo-700 hover:text-indigo-800 transition-colors"
+            className="flex items-center gap-2 font-bold text-lg text-indigo-700 hover:text-indigo-800 transition-colors shrink-0"
           >
             <BookOpen size={22} />
-            LinguaPlay
+            <span className="hidden sm:inline">LinguaPlay</span>
           </button>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1">
             <button
               onClick={() => setView('home')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'home' || view === 'game' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'home' || view === 'game' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
             >
-              Games
+              <Gamepad2 size={16} />
+              <span className="hidden sm:inline">Games</span>
             </button>
             <button
               onClick={() => setView('manage')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'manage' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'manage' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
             >
-              My Words
+              <BookMarked size={16} />
+              <span className="hidden sm:inline">My Words</span>
             </button>
             <button
               onClick={() => setView('hot')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'hot' ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-gray-100'}`}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'hot' ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-gray-100'}`}
             >
               <span aria-hidden="true">🔥</span>
-              Hot 10
+              <span className="hidden sm:inline">Hot 10</span>
             </button>
 
             {/* User avatar */}
-            <div className="relative ml-2">
+            <div className="relative ml-1 sm:ml-2">
               <button
                 onClick={() => setShowUserMenu(m => !m)}
-                className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-2 pl-1 pr-1 sm:pr-3 py-1 rounded-full hover:bg-gray-100 transition-colors"
               >
                 {user.photoURL ? (
                   <img src={user.photoURL} alt={user.displayName ?? ''} className="w-8 h-8 rounded-full" />
@@ -215,7 +217,7 @@ function AppContent() {
               </button>
 
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-10">
+                <div className="absolute right-0 mt-2 w-52 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-10">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-sm font-semibold text-gray-800 truncate">{user.displayName}</p>
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
@@ -382,18 +384,18 @@ function AppContent() {
         {/* GAME VIEW */}
         {view === 'game' && activeGame && (
           <div>
-            <div className="flex items-center gap-4 mb-8">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3 mb-8">
               <button
                 onClick={() => setView('home')}
-                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors shrink-0"
               >
                 ← Back to Games
               </button>
-              <div className="h-4 w-px bg-gray-200" />
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-800">{game?.label}</span>
+              <div className="h-4 w-px bg-gray-200 hidden sm:block" />
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <span className="font-semibold text-gray-800 truncate">{game?.label}</span>
                 {categoryFilter !== 'all' && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${CATEGORY_COLORS[categoryFilter]}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${CATEGORY_COLORS[categoryFilter]}`}>
                     {CATEGORY_LABELS[categoryFilter]}s only
                   </span>
                 )}
