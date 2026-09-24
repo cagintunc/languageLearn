@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS } from '../../types';
 import { CheckCircle, XCircle, Trophy, Zap, Timer } from 'lucide-react';
-import { shuffle, selectWords } from '../../lib/wordUtils';
+import { shuffle, selectWords, sameCategoryDistractors } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
@@ -13,8 +13,8 @@ const GAME_DURATION = 60;
 
 function pickQuestion(words: Word[]): { current: Word; options: Word[] } {
   const current = shuffle(words)[0];
-  const pool = shuffle(words.filter(w => w.id !== current.id)).slice(0, 3);
-  return { current, options: shuffle([current, ...pool]) };
+  const distractors = sameCategoryDistractors(current, words, 3);
+  return { current, options: shuffle([current, ...distractors]) };
 }
 
 export default function TimeAttack({ words, onWordSeen, onWordMiss }: Props) {

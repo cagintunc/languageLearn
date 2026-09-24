@@ -22,3 +22,15 @@ export function selectWords(words: Word[], limit = 30): Word[] {
   }
   return result;
 }
+
+/**
+ * Pick distractors for a multiple-choice question, preferring words that share
+ * the correct word's category so every option is the same part of speech.
+ * Falls back to other categories only if there aren't enough same-category words.
+ */
+export function sameCategoryDistractors(correct: Word, allWords: Word[], count = 3): Word[] {
+  const pool = allWords.filter(w => w.id !== correct.id);
+  const sameCategory = shuffle(pool.filter(w => w.category === correct.category));
+  const otherCategory = shuffle(pool.filter(w => w.category !== correct.category));
+  return [...sameCategory, ...otherCategory].slice(0, count);
+}

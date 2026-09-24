@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Word, CATEGORY_LABELS, CATEGORY_COLORS, GameScore } from '../../types';
 import { CheckCircle, XCircle, Trophy } from 'lucide-react';
-import { shuffle, selectWords } from '../../lib/wordUtils';
+import { shuffle, selectWords, sameCategoryDistractors } from '../../lib/wordUtils';
 
 interface Props {
   words: Word[];
@@ -10,8 +10,7 @@ interface Props {
 }
 
 function getOptions(correct: Word, allWords: Word[]): Word[] {
-  const pool = allWords.filter(w => w.id !== correct.id);
-  const distractors = shuffle(pool).slice(0, 3);
+  const distractors = sameCategoryDistractors(correct, allWords, 3);
   return shuffle([correct, ...distractors]);
 }
 
